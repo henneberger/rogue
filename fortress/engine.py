@@ -140,6 +140,8 @@ class Game(
         y = y if y is not None else self.rng.randint(1, self.height - 2)
         self._validate_point(x, y, z)
         d = Dwarf(id=self.next_dwarf_id, name=name, x=x, y=y, z=z)
+        d.alcohol_dependency = self.rng.randint(35, 85)
+        d.needs["alcohol"] = max(10, min(90, d.alcohol_dependency - 20))
         for labor in LABORS:
             d.labor_priority.setdefault(labor, 3)
             d.skills.setdefault(labor, 0)
@@ -533,6 +535,43 @@ class Game(
 
     def _in_bounds(self, x: int, y: int, z: int) -> bool:
         return 0 <= x < self.width and 0 <= y < self.height and 0 <= z < self.depth
+
+    def _effective_perishability(self, item: Item) -> int:
+        if item.perishability <= 0:
+            return 0
+        effective = item.perishability
+        sp = self._find_stockpile(item.stockpile_id)
+        if sp:
+            if sp.kind in {"raw", "cooked", "drink"}:
+                effective = int(effective * 1.7)
+            elif sp.kind == "general":
+                effective = int(effective * 1.25)
+            else:
+                effective = int(effective * 1.1)
+        else:
+            effective = int(effective * 0.82)
+            if self.world.weather in {"rain", "storm"}:
+                effective = int(effective * 0.85)
+            if self.world.temperature_c >= 24:
+                effective = int(effective * 0.90)
+        return max(1, effective)
+
+    def _apply_nutrition_from_item(self, dwarf: Dwarf, item: Item) -> None:
+        material = (item.material or "").lower()
+        protein_gain = 8
+        fiber_gain = 6
+        variety_gain = 4
+        if any(token in material for token in {"fish", "meat", "goat", "boar"}):
+            protein_gain += 14
+        if any(token in material for token in {"plump", "mushroom", "herb", "leaf"}):
+            fiber_gain += 12
+        if item.kind == "cooked_food":
+            variety_gain += 8
+        if item.quality >= 2:
+            variety_gain += 5
+        dwarf.nutrition["protein"] = clamp(dwarf.nutrition["protein"] - protein_gain, 0, 100)
+        dwarf.nutrition["fiber"] = clamp(dwarf.nutrition["fiber"] - fiber_gain, 0, 100)
+        dwarf.nutrition["variety"] = clamp(dwarf.nutrition["variety"] - variety_gain, 0, 100)
 
 
 __all__ = ["Game", "help_text"]

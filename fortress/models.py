@@ -143,6 +143,7 @@ class Dwarf:
         default_factory=lambda: {
             "hunger": 20,
             "thirst": 20,
+            "alcohol": 20,
             "sleep": 15,
             "social": 15,
             "worship": 20,
@@ -150,6 +151,15 @@ class Dwarf:
             "safety": 20,
         }
     )
+    nutrition: Dict[str, int] = field(
+        default_factory=lambda: {
+            "protein": 30,
+            "fiber": 30,
+            "variety": 35,
+        }
+    )
+    alcohol_dependency: int = 55
+    withdrawal_ticks: int = 0
     religion: str = "The Forge Ancestors"
     memories: List[str] = field(default_factory=list)
     relationships: Dict[int, int] = field(default_factory=dict)

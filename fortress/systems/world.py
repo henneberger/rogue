@@ -89,7 +89,8 @@ class WorldSystemsMixin:
         remove_ids: Set[int] = set()
         for item in self.items:
             item.age += 1
-            if item.perishability > 0 and item.age > item.perishability:
+            effective_perishability = self._effective_perishability(item)
+            if effective_perishability > 0 and item.age > effective_perishability:
                 if self.rng.random() < 0.15:
                     remove_ids.add(item.id)
         if remove_ids:
@@ -103,4 +104,3 @@ class WorldSystemsMixin:
         friendly = next((f for f in self.factions if f.name == "River Guild"), None)
         if friendly:
             friendly.reputation += 1
-

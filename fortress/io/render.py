@@ -98,9 +98,10 @@ class RenderMixin:
         for d in self.dwarves:
             state = d.job.kind if d.job else "idle"
             needs = ",".join(f"{k[:2]}={v}" for k, v in d.needs.items())
+            nutrition = ",".join(f"{k[:2]}={v}" for k, v in d.nutrition.items())
             room_value = self._dwarf_room_value(d.id)
             lines.append(
-                f"  [{d.id}] {d.name} ({d.x},{d.y},{d.z}) hp={d.hp} morale={d.morale} stress={d.stress} mood={d.mood} state={state} room={d.assigned_room_id} room_value={room_value} rested_bonus={d.rested_bonus} needs[{needs}]"
+                f"  [{d.id}] {d.name} ({d.x},{d.y},{d.z}) hp={d.hp} morale={d.morale} stress={d.stress} mood={d.mood} state={state} room={d.assigned_room_id} room_value={room_value} rested_bonus={d.rested_bonus} dep={d.alcohol_dependency} wd={d.withdrawal_ticks} needs[{needs}] nutrition[{nutrition}]"
             )
         lines.append("Workshops:")
         for ws in self.workshops:
@@ -185,7 +186,7 @@ class RenderMixin:
             for d in self.dwarves:
                 rel = sorted(d.relationships.items(), key=lambda kv: kv[1], reverse=True)[:3]
                 lines.append(
-                    f"[{d.id}] {d.name} room={d.assigned_room_id} room_value={self._dwarf_room_value(d.id)} rested_bonus={d.rested_bonus} skill_top={self._top_skills(d)} rel_top={rel} memories={d.memories[-2:]}"
+                    f"[{d.id}] {d.name} room={d.assigned_room_id} room_value={self._dwarf_room_value(d.id)} rested_bonus={d.rested_bonus} dep={d.alcohol_dependency} wd={d.withdrawal_ticks} nutrition={d.nutrition} skill_top={self._top_skills(d)} rel_top={rel} memories={d.memories[-2:]}"
                 )
             return "\n".join(lines)
         if name == "rooms":

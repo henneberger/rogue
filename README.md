@@ -52,6 +52,7 @@ panel events
 - Zones: `farm`, `recreation`, `temple`, `dormitory`, `hospital`, `pasture`, `burrow`.
 - Workshops: `kitchen`, `brewery`, `carpenter`, `mason`, `craftdwarf`, `smithy`, `loom`, `leatherworks` with recipe orders.
 - Item/entity simulation with materials, quality, value, perishability, ownership/reservation/carried state.
+- Food sim v2: nutrition pressure, storage-sensitive spoilage, and alcohol dependency effects.
 - Stockpiles with typed acceptance and hauling jobs.
 - Social memory and relationship updates.
 - Justice events and crime records.
