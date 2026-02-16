@@ -79,6 +79,23 @@ class PersistenceMixin:
         g.dwarves = []
         for dd in data["dwarves"]:
             dd["allowed_labors"] = set(dd.get("allowed_labors", []))
+            needs = dd.get("needs", {})
+            needs.setdefault("hunger", 20)
+            needs.setdefault("thirst", 20)
+            needs.setdefault("alcohol", 20)
+            needs.setdefault("sleep", 15)
+            needs.setdefault("social", 15)
+            needs.setdefault("worship", 20)
+            needs.setdefault("entertainment", 15)
+            needs.setdefault("safety", 20)
+            dd["needs"] = needs
+            nutrition = dd.get("nutrition", {})
+            nutrition.setdefault("protein", 30)
+            nutrition.setdefault("fiber", 30)
+            nutrition.setdefault("variety", 35)
+            dd["nutrition"] = nutrition
+            dd.setdefault("alcohol_dependency", 55)
+            dd.setdefault("withdrawal_ticks", 0)
             if isinstance(dd.get("job"), dict):
                 dd["job"] = Job(**dd["job"])
             rel = dd.get("relationships", {})

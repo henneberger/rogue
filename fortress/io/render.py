@@ -98,8 +98,9 @@ class RenderMixin:
         for d in self.dwarves:
             state = d.job.kind if d.job else "idle"
             needs = ",".join(f"{k[:2]}={v}" for k, v in d.needs.items())
+            nutrition = ",".join(f"{k[:2]}={v}" for k, v in d.nutrition.items())
             lines.append(
-                f"  [{d.id}] {d.name} ({d.x},{d.y},{d.z}) hp={d.hp} morale={d.morale} stress={d.stress} mood={d.mood} state={state} needs[{needs}]"
+                f"  [{d.id}] {d.name} ({d.x},{d.y},{d.z}) hp={d.hp} morale={d.morale} stress={d.stress} mood={d.mood} state={state} dep={d.alcohol_dependency} wd={d.withdrawal_ticks} needs[{needs}] nutrition[{nutrition}]"
             )
         lines.append("Workshops:")
         for ws in self.workshops:
@@ -182,7 +183,9 @@ class RenderMixin:
             lines = []
             for d in self.dwarves:
                 rel = sorted(d.relationships.items(), key=lambda kv: kv[1], reverse=True)[:3]
-                lines.append(f"[{d.id}] {d.name} skill_top={self._top_skills(d)} rel_top={rel} memories={d.memories[-2:]}")
+                lines.append(
+                    f"[{d.id}] {d.name} dep={d.alcohol_dependency} wd={d.withdrawal_ticks} nutrition={d.nutrition} skill_top={self._top_skills(d)} rel_top={rel} memories={d.memories[-2:]}"
+                )
             return "\n".join(lines)
         return "unknown panel"
 

@@ -10,14 +10,33 @@ class NeedsSystemsMixin:
                 continue
             d.needs["hunger"] = clamp(d.needs["hunger"] + 2, 0, 100)
             d.needs["thirst"] = clamp(d.needs["thirst"] + 2, 0, 100)
+            alcohol_pressure = max(0, d.alcohol_dependency // 30)
+            d.needs["alcohol"] = clamp(d.needs["alcohol"] + alcohol_pressure, 0, 100)
             d.needs["sleep"] = clamp(d.needs["sleep"] + 1, 0, 100)
             d.needs["social"] = clamp(d.needs["social"] + 1, 0, 100)
             d.needs["worship"] = clamp(d.needs["worship"] + 1, 0, 100)
             d.needs["entertainment"] = clamp(d.needs["entertainment"] + 1, 0, 100)
+            d.nutrition["protein"] = clamp(d.nutrition["protein"] + 1, 0, 100)
+            d.nutrition["fiber"] = clamp(d.nutrition["fiber"] + 1, 0, 100)
+            d.nutrition["variety"] = clamp(d.nutrition["variety"] + 1, 0, 100)
             if self.world.raid_active:
                 d.needs["safety"] = clamp(d.needs["safety"] + 2, 0, 100)
             else:
                 d.needs["safety"] = clamp(d.needs["safety"] - 1, 0, 100)
+
+            avg_nutrition_pressure = sum(d.nutrition.values()) / len(d.nutrition)
+            if avg_nutrition_pressure >= 70:
+                d.stress = clamp(d.stress + 1, 0, 100)
+                d.morale = clamp(d.morale - 1, 0, 100)
+
+            if d.alcohol_dependency >= 45 and self.drinks == 0 and d.needs["alcohol"] >= 70:
+                d.withdrawal_ticks += 1
+                d.stress = clamp(d.stress + 1 + (d.alcohol_dependency // 55), 0, 100)
+                d.morale = clamp(d.morale - 1, 0, 100)
+                if d.withdrawal_ticks in {1, 20, 50}:
+                    self._log("withdrawal", f"{d.name} is suffering alcohol withdrawal.", 2)
+            else:
+                d.withdrawal_ticks = 0
 
             high_needs = sum(1 for v in d.needs.values() if v >= 80)
             d.stress = clamp(d.stress + high_needs - (1 if d.morale > 70 else 0), 0, 100)
@@ -39,4 +58,3 @@ class NeedsSystemsMixin:
 
             if d.hp <= 0:
                 self._log("death", f"{d.name} has died.", 3)
-

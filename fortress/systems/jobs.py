@@ -10,11 +10,13 @@ class JobSystemsMixin:
         # Critical needs first.
         if dwarf.needs["hunger"] >= 70:
             meal = self._find_item(kind="cooked_food")
+            if not meal and dwarf.needs["hunger"] >= 90:
+                meal = self._find_item(kind="raw_food")
             if meal:
                 meal.reserved_by = dwarf.id
                 return self._new_job(kind="eat", labor="cook", item_id=meal.id, destination=self._item_pos(meal), phase="to_item")
 
-        if dwarf.needs["thirst"] >= 70:
+        if dwarf.needs["alcohol"] >= 60 or dwarf.needs["thirst"] >= 70:
             drink = self._find_item(kind="alcohol")
             if drink:
                 drink.reserved_by = dwarf.id
@@ -308,6 +310,7 @@ class JobSystemsMixin:
                 job.remaining -= 1
                 if job.remaining > 0:
                     return
+                self._apply_nutrition_from_item(dwarf, item)
                 self._consume_item(item.id)
                 if job.kind == "eat":
                     dwarf.needs["hunger"] = clamp(dwarf.needs["hunger"] - 65, 0, 100)
@@ -315,6 +318,12 @@ class JobSystemsMixin:
                 else:
                     dwarf.needs["thirst"] = clamp(dwarf.needs["thirst"] - 70, 0, 100)
                     dwarf.morale = clamp(dwarf.morale + 3, 0, 100)
+                    dwarf.needs["alcohol"] = clamp(
+                        dwarf.needs["alcohol"] - (45 + max(0, dwarf.alcohol_dependency // 3)),
+                        0,
+                        100,
+                    )
+                    dwarf.withdrawal_ticks = 0
                 dwarf.stress = clamp(dwarf.stress - 5, 0, 100)
                 dwarf.job = None
                 dwarf.state = "idle"
