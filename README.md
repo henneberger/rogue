@@ -59,6 +59,7 @@ panel events
 - Squads, raid alerts, basic defense/training loop, injury/recovery.
 - Culture/scholarship points and occasional artifact creation.
 - Room detection/valuation and dwarf room assignment with quality effects.
+- Biome-aware flora simulation with real species (scientific names), growth stages, stress, dormancy, and spreading.
 - Save/load, replay export, scripted command execution, data-definition loading (`load_defs`).
 
 ## REPL Commands
@@ -84,7 +85,8 @@ panel events
 - `squad add <squad_id> <dwarf_id>`
 - `faction stance <faction_id> <allied|neutral|hostile>`
 - `alert <peace|raid>`
-- `panel <world|worldgen|rooms|dwarves|jobs|stocks|events|factions|squads|justice|culture>`
+- `panel <world|worldgen|flora|rooms|dwarves|jobs|stocks|events|factions|squads|justice|culture>`
+- `flora at <x> <y> <z>`
 - `items`
 - `alerts`
 - `save <path>` / `load <path>`
@@ -102,6 +104,8 @@ eval g.world
 eval [(d.id, d.mood, d.stress, d.needs) for d in g.dwarves]
 panel jobs
 panel stocks
+panel flora
+flora at 10 5 0
 items
 exec g.tick(50)
 ```

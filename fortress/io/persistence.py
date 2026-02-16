@@ -10,6 +10,7 @@ from fortress.models import (
     Dwarf,
     Event,
     Faction,
+    Flora,
     HistoricalEvent,
     Item,
     Job,
@@ -45,6 +46,7 @@ class PersistenceMixin:
             "regions": [asdict(r) for r in self.regions],
             "world_history": [asdict(h) for h in self.world_history],
             "rooms": [asdict(r) for r in self.rooms],
+            "floras": [asdict(fl) for fl in self.floras],
             "crimes": [asdict(c) for c in self.crimes],
             "events": [asdict(e) for e in self.events],
             "jobs": [asdict(j) for j in self.jobs],
@@ -60,6 +62,7 @@ class PersistenceMixin:
                 "next_job_id": self.next_job_id,
                 "next_crime_id": self.next_crime_id,
                 "next_room_id": self.next_room_id,
+                "next_flora_id": self.next_flora_id,
             },
             "command_log": self.command_log,
             "defs": self.defs,
@@ -111,6 +114,7 @@ class PersistenceMixin:
         g.regions = [Region(**r) for r in data.get("regions", [])]
         g.world_history = [HistoricalEvent(**h) for h in data.get("world_history", [])]
         g.rooms = [Room(**r) for r in data.get("rooms", [])]
+        g.floras = [Flora(**fl) for fl in data.get("floras", [])]
         g.crimes = [Crime(**c) for c in data["crimes"]]
         g.events = [Event(**e) for e in data["events"]]
         g.jobs = [Job(**j) for j in data["jobs"]]
@@ -126,8 +130,11 @@ class PersistenceMixin:
         g.next_job_id = counters["next_job_id"]
         g.next_crime_id = counters["next_crime_id"]
         g.next_room_id = counters.get("next_room_id", 1)
+        g.next_flora_id = counters.get("next_flora_id", 1)
         g.command_log = data.get("command_log", [])
         g.defs = data.get("defs", g.default_defs())
+        if not g.floras:
+            g._init_flora()
         g._refresh_rooms_and_assignments()
         return g
 
