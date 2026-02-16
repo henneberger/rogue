@@ -154,6 +154,8 @@ class Dwarf:
     memories: List[str] = field(default_factory=list)
     relationships: Dict[int, int] = field(default_factory=dict)
     squad_id: Optional[int] = None
+    assigned_room_id: Optional[int] = None
+    rested_bonus: int = 0
     job: Optional[Job] = None
     state: str = "idle"
 
@@ -236,6 +238,24 @@ class HistoricalEvent:
     target: str
     delta_reputation: int
     text: str
+
+
+@dataclass
+class Room:
+    id: int
+    kind: str  # bedroom | dormitory | hall
+    x: int
+    y: int
+    z: int
+    w: int
+    h: int
+    value: int = 0
+    bed_item_id: Optional[int] = None
+    assigned_dwarf_id: Optional[int] = None
+
+    def contains(self, pos: Coord3) -> bool:
+        px, py, pz = pos
+        return pz == self.z and self.x <= px < self.x + self.w and self.y <= py < self.y + self.h
 
 
 @dataclass

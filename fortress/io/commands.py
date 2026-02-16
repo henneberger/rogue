@@ -188,7 +188,7 @@ def help_text() -> str:
         "  squad add <squad_id> <dwarf_id>\n"
         "  faction stance <faction_id> <allied|neutral|hostile>\n"
         "  alert <peace|raid>\n"
-        "  panel <world|worldgen|dwarves|jobs|stocks|events|factions|squads|justice|culture>\n"
+        "  panel <world|worldgen|rooms|dwarves|jobs|stocks|events|factions|squads|justice|culture>\n"
         "  items\n"
         "  alerts\n"
         "  save <path> | load <path>\n"

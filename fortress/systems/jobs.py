@@ -21,6 +21,10 @@ class JobSystemsMixin:
                 return self._new_job(kind="drink", labor="brew", item_id=drink.id, destination=self._item_pos(drink), phase="to_item")
 
         if dwarf.needs["sleep"] >= 75 and self._find_zone("dormitory"):
+            bed = self._assigned_bed_for_dwarf(dwarf.id)
+            if bed and bed.reserved_by is None:
+                bed.reserved_by = dwarf.id
+                return self._new_job(kind="sleep", labor="sleep", item_id=bed.id, destination=self._item_pos(bed), phase="to_bed", remaining=5)
             bed = self._find_item(kind="bed")
             if bed and bed.reserved_by is None:
                 bed.reserved_by = dwarf.id
@@ -263,6 +267,8 @@ class JobSystemsMixin:
 
         if job.phase == "crafting":
             job.remaining -= 1
+            if dwarf.rested_bonus > 0 and self.rng.random() < 0.20:
+                job.remaining -= 1
             if job.remaining > 0:
                 return
             # Consume required inputs.
@@ -332,9 +338,13 @@ class JobSystemsMixin:
                 job.remaining -= 1
                 if job.remaining > 0:
                     return
+                room_value = self._dwarf_room_value(dwarf.id)
+                morale_gain = min(12, 5 + room_value // 25)
+                stress_recovery = min(18, 8 + room_value // 20)
                 dwarf.needs["sleep"] = clamp(dwarf.needs["sleep"] - 70, 0, 100)
-                dwarf.stress = clamp(dwarf.stress - 8, 0, 100)
-                dwarf.morale = clamp(dwarf.morale + 5, 0, 100)
+                dwarf.stress = clamp(dwarf.stress - stress_recovery, 0, 100)
+                dwarf.morale = clamp(dwarf.morale + morale_gain, 0, 100)
+                dwarf.rested_bonus = max(dwarf.rested_bonus, min(80, room_value))
                 dwarf.job = None
                 dwarf.state = "idle"
 
