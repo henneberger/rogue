@@ -8,6 +8,8 @@ class NeedsSystemsMixin:
         for d in self.dwarves:
             if d.hp <= 0:
                 continue
+            if d.rested_bonus > 0:
+                d.rested_bonus -= 1
             d.needs["hunger"] = clamp(d.needs["hunger"] + 2, 0, 100)
             d.needs["thirst"] = clamp(d.needs["thirst"] + 2, 0, 100)
             alcohol_pressure = max(0, d.alcohol_dependency // 30)

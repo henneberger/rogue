@@ -58,6 +58,7 @@ panel events
 - Justice events and crime records.
 - Squads, raid alerts, basic defense/training loop, injury/recovery.
 - Culture/scholarship points and occasional artifact creation.
+- Room detection/valuation and dwarf room assignment with quality effects.
 - Save/load, replay export, scripted command execution, data-definition loading (`load_defs`).
 
 ## REPL Commands
@@ -83,7 +84,7 @@ panel events
 - `squad add <squad_id> <dwarf_id>`
 - `faction stance <faction_id> <allied|neutral|hostile>`
 - `alert <peace|raid>`
-- `panel <world|worldgen|dwarves|jobs|stocks|events|factions|squads|justice|culture>`
+- `panel <world|worldgen|rooms|dwarves|jobs|stocks|events|factions|squads|justice|culture>`
 - `items`
 - `alerts`
 - `save <path>` / `load <path>`
