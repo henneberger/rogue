@@ -88,6 +88,7 @@ class RenderMixin:
         alive = [d for d in self.dwarves if d.hp > 0]
         lines = [
             f"Tick {self.tick_count} day={self.world.day} season={self.world.season} weather={self.world.weather} temp={self.world.temperature_c}C z={self.selected_z}",
+            f"World: {self.world.world_name} region={self.world.fortress_region_id}",
             f"Resources: raw={self.raw_food} cooked={self.cooked_food} drink={self.drinks} items={len(self.items)} wealth={self.world.wealth}",
             f"Threat: raid_active={self.world.raid_active} level={self.world.threat_level} squads={len(self.squads)}",
             f"Population: dwarves={len(alive)}/{len(self.dwarves)} animals={len(self.animals)}",
@@ -114,7 +115,9 @@ class RenderMixin:
             )
         lines.append("Factions:")
         for f in self.factions:
-            lines.append(f"  [{f.id}] {f.name} stance={f.stance} rep={f.reputation}")
+            lines.append(
+                f"  [{f.id}] {f.name} stance={f.stance} rep={f.reputation} home_region={f.home_region_id} type={f.civ_type}"
+            )
         unresolved = len([c for c in self.crimes if not c.resolved])
         lines.append(f"Justice: crimes={len(self.crimes)} unresolved={unresolved}")
         return "\n".join(lines)
@@ -123,11 +126,29 @@ class RenderMixin:
         name = name.lower()
         if name == "world":
             return (
+                f"world={self.world.world_name} fortress_region={self.world.fortress_region_id}\n"
                 f"day={self.world.day} season={self.world.season} weather={self.world.weather} temp={self.world.temperature_c}C\n"
                 f"biome={self.world.biome} wealth={self.world.wealth}\n"
                 f"water_pressure={self.world.water_pressure} magma_pressure={self.world.magma_pressure}\n"
-                f"raid_active={self.world.raid_active} threat={self.world.threat_level}"
+                f"raid_active={self.world.raid_active} threat={self.world.threat_level}\n"
+                f"regions={len(self.regions)} history_events={len(self.world_history)}"
             )
+        if name == "worldgen":
+            lines = [
+                f"World: {self.world.world_name} (seed={self.rng_seed})",
+                f"Fortress Region: {self.world.fortress_region_id}",
+                "Regions:",
+            ]
+            for region in self.regions:
+                lines.append(
+                    f"  [{region.id}] {region.name} biome={region.biome} rain={region.rainfall} temp={region.temperature_band} elev={region.elevation} neighbors={region.neighbors} resources={region.resources}"
+                )
+            lines.append("Historical Events:")
+            for ev in self.world_history[-10:]:
+                lines.append(
+                    f"  y{ev.year}: {ev.actor} -> {ev.target} {ev.event_type} ({ev.delta_reputation:+d})"
+                )
+            return "\n".join(lines)
         if name == "jobs":
             lines = ["Global queued jobs:"]
             for j in self.jobs:
@@ -145,7 +166,10 @@ class RenderMixin:
         if name == "events":
             return "\n".join(f"t{e.tick} [{e.kind}] sev={e.severity} {e.text}" for e in self.events[-20:])
         if name == "factions":
-            return "\n".join(f"[{f.id}] {f.name}: {f.stance} rep={f.reputation}" for f in self.factions)
+            return "\n".join(
+                f"[{f.id}] {f.name}: {f.stance} rep={f.reputation} home_region={f.home_region_id} type={f.civ_type}"
+                for f in self.factions
+            )
         if name == "squads":
             return "\n".join(f"[{s.id}] {s.name}: members={s.members} training={s.training}" for s in self.squads) or "no squads"
         if name == "justice":

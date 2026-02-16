@@ -195,6 +195,8 @@ class Faction:
     name: str
     stance: str = "neutral"  # allied neutral hostile
     reputation: int = 0
+    home_region_id: Optional[int] = None
+    civ_type: str = "kingdom"
 
 
 @dataclass
@@ -215,12 +217,36 @@ class Event:
 
 
 @dataclass
+class Region:
+    id: int
+    name: str
+    biome: str
+    rainfall: str
+    temperature_band: str
+    elevation: str
+    resources: List[str] = field(default_factory=list)
+    neighbors: List[int] = field(default_factory=list)
+
+
+@dataclass
+class HistoricalEvent:
+    year: int
+    event_type: str
+    actor: str
+    target: str
+    delta_reputation: int
+    text: str
+
+
+@dataclass
 class WorldState:
+    world_name: str = "Unnamed World"
     day: int = 1
     season: str = "spring"
     weather: str = "clear"
     temperature_c: int = 12
     biome: str = "temperate-forest"
+    fortress_region_id: int = 1
     wealth: int = 0
     water_pressure: int = 0
     magma_pressure: int = 0
@@ -248,4 +274,3 @@ def item_category(kind: str) -> str:
     if kind in {"bed", "chair", "table"}:
         return "furniture"
     return "general"
-
