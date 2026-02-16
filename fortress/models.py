@@ -269,6 +269,30 @@ class Room:
 
 
 @dataclass
+class Flora:
+    id: int
+    species_id: str
+    common_name: str
+    scientific_name: str
+    kind: str  # plant | tree
+    x: int
+    y: int
+    z: int
+    stage: str
+    growth_points: int = 0
+    age_ticks: int = 0
+    health: int = 100
+    dormant: bool = False
+    stressed: bool = False
+    dead: bool = False
+    spread_cooldown: int = 0
+
+    @property
+    def pos(self) -> Coord3:
+        return (self.x, self.y, self.z)
+
+
+@dataclass
 class WorldState:
     world_name: str = "Unnamed World"
     day: int = 1

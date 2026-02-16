@@ -127,6 +127,8 @@ class CommandMixin:
             return f"alert set to {parts[1]}"
         if cmd == "panel" and len(parts) == 2:
             return self.panel(parts[1])
+        if cmd == "flora" and len(parts) == 5 and parts[1] == "at":
+            return self.flora_at(int(parts[2]), int(parts[3]), int(parts[4]))
         if cmd == "items":
             return self.items_dump()
         if cmd == "alerts":
@@ -188,7 +190,8 @@ def help_text() -> str:
         "  squad add <squad_id> <dwarf_id>\n"
         "  faction stance <faction_id> <allied|neutral|hostile>\n"
         "  alert <peace|raid>\n"
-        "  panel <world|worldgen|rooms|dwarves|jobs|stocks|events|factions|squads|justice|culture>\n"
+        "  panel <world|worldgen|flora|rooms|dwarves|jobs|stocks|events|factions|squads|justice|culture>\n"
+        "  flora at <x> <y> <z>\n"
         "  items\n"
         "  alerts\n"
         "  save <path> | load <path>\n"

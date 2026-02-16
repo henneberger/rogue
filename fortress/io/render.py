@@ -50,6 +50,11 @@ class RenderMixin:
             if self._in_bounds(ws.x, ws.y, z):
                 grid[ws.y][ws.x] = ch
 
+        for fl in self.floras:
+            if fl.z != z or not self._in_bounds(fl.x, fl.y, z):
+                continue
+            grid[fl.y][fl.x] = self._flora_glyph(fl)
+
         for item in self.items:
             ix, iy, iz = self._item_pos(item)
             if iz != z or not self._in_bounds(ix, iy, iz):
@@ -78,8 +83,8 @@ class RenderMixin:
 
         lines = [
             f"Tick {self.tick_count} | z={z} | day={self.world.day} {self.world.season} | weather={self.world.weather} temp={self.world.temperature_c}C",
-            f"food raw={self.raw_food} cooked={self.cooked_food} drink={self.drinks} wealth={self.world.wealth} raid={self.world.raid_active}",
-            "Legend: D dwarf, a animal, workshops (lower=construction upper=built), f/r/t/d/h/p/b zones, stockpiles s c q m g u + S, items R C A W O E F H B *",
+            f"food raw={self.raw_food} cooked={self.cooked_food} drink={self.drinks} flora={len(self.floras)} wealth={self.world.wealth} raid={self.world.raid_active}",
+            'Legend: D dwarf, a animal, workshops (lower=construction upper=built), f/r/t/d/h/p/b zones, stockpiles s c q m g u + S, flora , ; " * + t y T Y A x, items R C A W O E F H B *',
         ]
         lines.extend("".join(row) for row in grid)
         return "\n".join(lines)
@@ -116,6 +121,7 @@ class RenderMixin:
                 f"  [{sp.id}] {sp.kind} ({sp.x},{sp.y},{sp.z},{sp.w},{sp.h}) used={self._stockpile_used_slots(sp)}/{sp.capacity}"
             )
         lines.append(f"Rooms: {len(self.rooms)}")
+        lines.append(f"Flora: {len(self.floras)}")
         lines.append("Factions:")
         for f in self.factions:
             lines.append(
@@ -188,6 +194,36 @@ class RenderMixin:
                 lines.append(
                     f"[{d.id}] {d.name} room={d.assigned_room_id} room_value={self._dwarf_room_value(d.id)} rested_bonus={d.rested_bonus} dep={d.alcohol_dependency} wd={d.withdrawal_ticks} nutrition={d.nutrition} skill_top={self._top_skills(d)} rel_top={rel} memories={d.memories[-2:]}"
                 )
+            return "\n".join(lines)
+        if name == "flora":
+            if not self.floras:
+                return "no flora"
+            stage_counts: Dict[str, int] = {}
+            species_counts: Dict[str, int] = {}
+            stress = 0
+            dormant = 0
+            dead = 0
+            for fl in self.floras:
+                stage_counts[fl.stage] = stage_counts.get(fl.stage, 0) + 1
+                label = f"{fl.common_name} ({fl.scientific_name})"
+                species_counts[label] = species_counts.get(label, 0) + 1
+                stress += 1 if fl.stressed else 0
+                dormant += 1 if fl.dormant else 0
+                dead += 1 if fl.dead else 0
+            lines = [
+                f"Flora Summary: total={len(self.floras)} stressed={stress} dormant={dormant} dead={dead}",
+                "Stages: " + ", ".join(f"{k}={v}" for k, v in sorted(stage_counts.items())),
+                "Species (top 12):",
+            ]
+            for label, count in sorted(species_counts.items(), key=lambda kv: kv[1], reverse=True)[:12]:
+                lines.append(f"  {label}: {count}")
+            lines.append("Recent flora events:")
+            flora_events = [e for e in self.events if e.kind == "flora"][-8:]
+            if flora_events:
+                for e in flora_events:
+                    lines.append(f"  t{e.tick} {e.text}")
+            else:
+                lines.append("  none")
             return "\n".join(lines)
         if name == "rooms":
             lines = ["Rooms:"]
