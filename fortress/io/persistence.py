@@ -4,7 +4,22 @@ from dataclasses import asdict
 from typing import Any, Dict, List
 import json
 
-from fortress.models import Animal, Crime, Dwarf, Event, Faction, Item, Job, Squad, Stockpile, WorldState, Workshop, Zone
+from fortress.models import (
+    Animal,
+    Crime,
+    Dwarf,
+    Event,
+    Faction,
+    HistoricalEvent,
+    Item,
+    Job,
+    Region,
+    Squad,
+    Stockpile,
+    WorldState,
+    Workshop,
+    Zone,
+)
 
 
 class PersistenceMixin:
@@ -26,6 +41,8 @@ class PersistenceMixin:
             "animals": [asdict(a) for a in self.animals],
             "squads": [asdict(s) for s in self.squads],
             "factions": [asdict(f) for f in self.factions],
+            "regions": [asdict(r) for r in self.regions],
+            "world_history": [asdict(h) for h in self.world_history],
             "crimes": [asdict(c) for c in self.crimes],
             "events": [asdict(e) for e in self.events],
             "jobs": [asdict(j) for j in self.jobs],
@@ -71,6 +88,8 @@ class PersistenceMixin:
         g.animals = [Animal(**a) for a in data["animals"]]
         g.squads = [Squad(**s) for s in data["squads"]]
         g.factions = [Faction(**f) for f in data["factions"]]
+        g.regions = [Region(**r) for r in data.get("regions", [])]
+        g.world_history = [HistoricalEvent(**h) for h in data.get("world_history", [])]
         g.crimes = [Crime(**c) for c in data["crimes"]]
         g.events = [Event(**e) for e in data["events"]]
         g.jobs = [Job(**j) for j in data["jobs"]]

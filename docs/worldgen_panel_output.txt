@@ -1,0 +1,20 @@
+World: Storm Spine (seed=7)
+Fortress Region: 1
+Regions:
+  [1] Deep Reach biome=temperate-forest rain=high temp=cold elev=uplands neighbors=[2, 6] resources=['fiber', 'herbs', 'wood']
+  [2] Amber Reach biome=temperate-forest rain=moderate temp=mild elev=lowlands neighbors=[1, 3] resources=['fiber', 'stone', 'wood']
+  [3] Deep Reach biome=river-lowlands rain=low temp=cold elev=mountainous neighbors=[2, 4] resources=['fiber', 'wildlife', 'wood']
+  [4] Deep Reach biome=arid-steppe rain=low temp=warm elev=lowlands neighbors=[3, 5] resources=['clay', 'ore', 'stone']
+  [5] Frost Frontier biome=river-lowlands rain=high temp=cold elev=lowlands neighbors=[4, 6] resources=['fiber', 'herbs', 'stone']
+  [6] Storm Vale biome=river-lowlands rain=high temp=cold elev=mountainous neighbors=[1, 2, 5] resources=['fiber', 'stone', 'wood']
+Historical Events:
+  y-77: Goblin Host -> River Guild betrayal (-19)
+  y-63: Sun Court -> Goblin Host trade-dispute (-15)
+  y-57: Mountainhome -> Goblin Host trade-dispute (-6)
+  y-53: Mountainhome -> River Guild betrayal (-21)
+  y-47: Sun Court -> River Guild betrayal (-18)
+  y-31: Goblin Host -> Mountainhome trade-dispute (-11)
+  y-27: River Guild -> Sun Court trade-pact (+17)
+  y-21: Mountainhome -> River Guild aid-treaty (+14)
+  y-19: River Guild -> Goblin Host trade-dispute (-9)
+  y-8: Mountainhome -> River Guild trade-dispute (-10)

@@ -82,7 +82,7 @@ panel events
 - `squad add <squad_id> <dwarf_id>`
 - `faction stance <faction_id> <allied|neutral|hostile>`
 - `alert <peace|raid>`
-- `panel <world|dwarves|jobs|stocks|events|factions|squads|justice|culture>`
+- `panel <world|worldgen|dwarves|jobs|stocks|events|factions|squads|justice|culture>`
 - `items`
 - `alerts`
 - `save <path>` / `load <path>`
