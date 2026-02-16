@@ -19,6 +19,7 @@ from fortress.models import (
     Job,
     LABORS,
     Region,
+    Room,
     Squad,
     Stockpile,
     WorldState,
@@ -31,6 +32,7 @@ from fortress.systems.justice import JusticeSystemsMixin
 from fortress.systems.needs import NeedsSystemsMixin
 from fortress.systems.social import SocialSystemsMixin
 from fortress.systems.world import WorldSystemsMixin
+from fortress.systems.architecture import ArchitectureSystemsMixin
 
 
 @dataclass
@@ -38,6 +40,7 @@ class Game(
     CommandMixin,
     PersistenceMixin,
     RenderMixin,
+    ArchitectureSystemsMixin,
     JobSystemsMixin,
     JusticeSystemsMixin,
     NeedsSystemsMixin,
@@ -60,6 +63,7 @@ class Game(
     next_faction_id: int = 1
     next_job_id: int = 1
     next_crime_id: int = 1
+    next_room_id: int = 1
     zones: List[Zone] = field(default_factory=list)
     stockpiles: List[Stockpile] = field(default_factory=list)
     workshops: List[Workshop] = field(default_factory=list)
@@ -70,6 +74,7 @@ class Game(
     factions: List[Faction] = field(default_factory=list)
     regions: List[Region] = field(default_factory=list)
     world_history: List[HistoricalEvent] = field(default_factory=list)
+    rooms: List[Room] = field(default_factory=list)
     crimes: List[Crime] = field(default_factory=list)
     events: List[Event] = field(default_factory=list)
     jobs: List[Job] = field(default_factory=list)
@@ -96,6 +101,7 @@ class Game(
         self._spawn_item("ore", 2, 3, 0, material="hematite", value=3)
         self._spawn_item("fiber", 2, 4, 0, material="pig-tail", value=2)
         self._spawn_item("hide", 2, 5, 0, material="goat-hide", value=2)
+        self._refresh_rooms_and_assignments()
 
     @staticmethod
     def default_defs() -> Dict[str, Any]:
@@ -345,6 +351,7 @@ class Game(
             self._fluid_tick()
             self._item_tick()
             self._sync_carried_items()
+            self._refresh_rooms_and_assignments()
             self.world.wealth = sum(i.value + i.quality for i in self.items)
 
     # Shared helpers for subsystems.
