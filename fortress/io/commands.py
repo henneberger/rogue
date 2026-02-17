@@ -10,6 +10,12 @@ class CommandMixin:
         raw = raw.strip()
         if not raw:
             return ""
+        if raw == ".":
+            raw = "tick 1"
+        elif raw == ">":
+            raw = f"z {self.selected_z + 1}"
+        elif raw == "<":
+            raw = f"z {self.selected_z - 1}"
         parts = shlex.split(raw)
         cmd = parts[0].lower()
 
@@ -34,7 +40,7 @@ class CommandMixin:
             return self.render()
         if cmd == "z" and len(parts) == 2:
             self.selected_z = clamp(int(parts[1]), 0, self.depth - 1)
-            return f"selected z-level {self.selected_z}"
+            return self.render()
         if cmd == "add" and len(parts) >= 2 and parts[1] == "dwarf":
             name = parts[2] if len(parts) > 2 else None
             d = self.add_dwarf(name=name, z=self.selected_z)
@@ -179,6 +185,9 @@ def help_text() -> str:
     return (
         "Commands:\n"
         "  help\n"
+        "  . (tick one step)\n"
+        "  < (move z-level up)\n"
+        "  > (move z-level down)\n"
         "  render [z]\n"
         "  render geology [z]\n"
         "  status\n"

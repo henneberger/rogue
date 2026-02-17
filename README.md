@@ -79,10 +79,14 @@ panel events
 - Biome-aware flora simulation with real species (scientific names), growth stages, stress, dormancy, and spreading.
 - Subterranean geology with strata, deterministic ore/gem deposits, cavern regions, and mining discovery events.
 - Save/load, replay export, scripted command execution, data-definition loading (`load_defs`).
+- REPL ergonomics: arrow-key history/cursor editing, argument-aware tab completion, and shortcut commands (`.`, `<`, `>`).
 
 ## REPL Commands
 
 - `help`
+- `.`
+- `<`
+- `>`
 - `render [z]`
 - `render geology [z]`
 - `status`
