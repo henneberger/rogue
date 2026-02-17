@@ -378,27 +378,37 @@ class GameHelpersMixin:
         return 0 <= x < self.width and 0 <= y < self.height and 0 <= z < self.depth
 
     def _effective_perishability(self, item: Item) -> int:
-        if item.perishability <= 0:
+        if item.container_id is not None:
             return 0
-        effective = item.perishability
-        sp = self._find_stockpile(item.stockpile_id)
-        if sp:
-            if sp.kind in {"raw", "cooked", "drink"}:
-                effective = int(effective * 1.7)
-                if item.container_id is not None:
-                    container = self._find_item_by_id(item.container_id)
-                    if container and container.kind == "barrel":
-                        effective = int(effective * 1.25)
-            elif sp.kind == "general":
-                effective = int(effective * 1.25)
-            else:
-                effective = int(effective * 1.1)
-        else:
-            effective = int(effective * 0.82)
-            if self.world.weather in {"rain", "storm"}:
-                effective = int(effective * 0.85)
-            if self.world.temperature_c >= 24:
-                effective = int(effective * 0.90)
+
+        organic_kinds = {
+            "raw_food",
+            "cooked_food",
+            "alcohol",
+            "herb",
+            "berry",
+            "fiber",
+            "hide",
+            "leather",
+            "timber",
+            "wood",
+            "seed",
+            "flour",
+        }
+        is_organic = item.kind in organic_kinds
+        if not is_organic and item.perishability <= 0:
+            return 0
+
+        x, y, z = self._item_pos(item)
+        sheltered = z > 0 or any(room.contains((x, y, z)) for room in self.rooms)
+        if is_organic and sheltered:
+            return 0
+
+        effective = item.perishability if item.perishability > 0 else 220
+        if self.world.weather in {"rain", "storm"}:
+            effective = int(effective * 0.78)
+        if self.world.temperature_c >= 24:
+            effective = int(effective * 0.85)
         return max(1, effective)
 
     def _apply_nutrition_from_item(self, dwarf: Dwarf, item: Item) -> None:
