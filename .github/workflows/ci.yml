@@ -1,0 +1,51 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12", "3.13"]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Compile sources
+        run: |
+          python -m py_compile game.py fortress/*.py fortress/io/*.py fortress/systems/*.py tests/*.py
+
+      - name: Run unit tests
+        run: |
+          python -m unittest -v \
+            tests/test_economy_issue29.py \
+            tests/test_balance_pass.py \
+            tests/test_container_storage_issue33.py \
+            tests/test_workshop_catalog_expansion.py \
+            tests/test_workshop_depth_chains.py
+
+      - name: Smoke test REPL commands
+        run: |
+          python game.py <<'EOF'
+          status
+          zone farm 1 8 0 6 3
+          stockpile raw 8 8 0 4 3
+          build workshop kitchen 11 7 0
+          tick 20
+          order 1 meal 3
+          tick 20
+          panel stocks
+          quit
+          EOF
