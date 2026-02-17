@@ -25,6 +25,12 @@ Coverage status: `/Users/henneberger/game2/docs/ROADMAP_COVERAGE_STATUS.md`
 python3 /Users/henneberger/game2/game.py
 ```
 
+## Test
+
+```bash
+python3 -m unittest -v tests/test_economy_issue29.py
+```
+
 ## Quick Start
 
 ```text

@@ -29,9 +29,31 @@ class SocialSystemsMixin:
         if self.rng.random() < 0.03 and self.world.culture_points > 3:
             self._spawn_item("artifact", self.width // 2, self.height // 2, 0, quality=4, value=20)
             self.world.culture_points -= 3
+            self.economy_stats["cultural_goods_created"] = self.economy_stats.get("cultural_goods_created", 0) + 1
             self._log("culture", "An inspired artifact was created from colony legends.", 2)
         if self.rng.random() < 0.04:
             self.world.scholarly_points += 1
+        if self.world.scholarly_points >= 4 and self.rng.random() < 0.12:
+            quality = 1 + min(4, self.world.scholarly_points // 6)
+            value = 6 + quality * 2
+            self._spawn_item("manuscript", self.width // 2, max(0, self.height // 2 - 1), 0, quality=quality, value=value)
+            self.world.scholarly_points = max(0, self.world.scholarly_points - 3)
+            self.economy_stats["cultural_goods_created"] = self.economy_stats.get("cultural_goods_created", 0) + 1
+            self._log("culture", "A manuscript was completed in the archives.", 1)
+        if self.world.culture_points >= 2 and self.rng.random() < 0.10:
+            quality = 1 + min(4, self.world.culture_points // 4)
+            value = 5 + quality * 2
+            self._spawn_item(
+                "performance_record",
+                self.width // 2,
+                min(self.height - 1, self.height // 2 + 1),
+                0,
+                quality=quality,
+                value=value,
+            )
+            self.world.culture_points = max(0, self.world.culture_points - 2)
+            self.economy_stats["cultural_goods_created"] = self.economy_stats.get("cultural_goods_created", 0) + 1
+            self._log("culture", "A performance record entered the cultural ledger.", 1)
 
     def _top_skills(self, dwarf: Dwarf) -> List[Tuple[str, int]]:
         return sorted(dwarf.skills.items(), key=lambda kv: kv[1], reverse=True)[:3]

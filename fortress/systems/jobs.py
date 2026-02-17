@@ -13,10 +13,27 @@ class JobSystemsMixin(JobExecutionMixin):
             meal = self._find_item(kind="cooked_food")
             if not meal and dwarf.needs["hunger"] >= 95:
                 meal = self._find_item(kind="raw_food")
+            if not meal and dwarf.needs["hunger"] >= 90:
+                meal = self._find_item(kind="berry")
+            if not meal and dwarf.needs["hunger"] >= 90:
+                meal = self._find_item(kind="herb")
+            if not meal and dwarf.needs["hunger"] >= 95:
+                meal = self._find_item(kind="rare_plant")
             if meal:
                 meal.reserved_by = dwarf.id
                 return self._new_job(kind="eat", labor="cook", item_id=meal.id, destination=self._item_pos(meal), phase="to_item")
             if dwarf.needs["hunger"] >= 90 and self._labor_allowed(dwarf, "harvest"):
+                forage_target = self._find_forageable_flora(dwarf.z)
+                if forage_target:
+                    forage_target.reserved_by = dwarf.id
+                    return self._new_job(
+                        kind="gather_flora",
+                        labor="harvest",
+                        target_id=forage_target.id,
+                        destination=(forage_target.x, forage_target.y, forage_target.z),
+                        phase="to_flora",
+                        remaining=3,
+                    )
                 return self._new_job(
                     kind="forage",
                     labor="harvest",
@@ -59,7 +76,18 @@ class JobSystemsMixin(JobExecutionMixin):
                 return self._new_job(kind="worship", labor="worship", destination=temple.random_tile(self.rng), remaining=3)
 
         # Keep baseline survival loops running even when players do long unattended runs.
-        if self.raw_food + self.cooked_food <= 2:
+        if self._available_food_items() <= 2:
+            forage_target = self._find_forageable_flora(dwarf.z) if self._labor_allowed(dwarf, "harvest") else None
+            if forage_target:
+                forage_target.reserved_by = dwarf.id
+                return self._new_job(
+                    kind="gather_flora",
+                    labor="harvest",
+                    target_id=forage_target.id,
+                    destination=(forage_target.x, forage_target.y, forage_target.z),
+                    phase="to_flora",
+                    remaining=3,
+                )
             if self._labor_allowed(dwarf, "harvest"):
                 farm = self._find_farm_with_crops(z=dwarf.z)
                 if farm:
@@ -123,6 +151,42 @@ class JobSystemsMixin(JobExecutionMixin):
 
         # Farming and gathering.
         if self._labor_allowed(dwarf, "harvest"):
+            if self._count_item_kind("timber") < 4 and dwarf.needs["hunger"] < 70 and dwarf.needs["thirst"] < 75 and self.rng.random() < 0.25:
+                tree_target = self._find_tree_for_chop(dwarf.z)
+                if tree_target:
+                    tree_target.reserved_by = dwarf.id
+                    return self._new_job(
+                        kind="chop_tree",
+                        labor="harvest",
+                        target_id=tree_target.id,
+                        destination=(tree_target.x, tree_target.y, tree_target.z),
+                        phase="to_tree",
+                        remaining=4,
+                    )
+            if self._available_food_items() < 10 and self.rng.random() < 0.20:
+                forage_target = self._find_forageable_flora(dwarf.z)
+                if forage_target:
+                    forage_target.reserved_by = dwarf.id
+                    return self._new_job(
+                        kind="gather_flora",
+                        labor="harvest",
+                        target_id=forage_target.id,
+                        destination=(forage_target.x, forage_target.y, forage_target.z),
+                        phase="to_flora",
+                        remaining=3,
+                    )
+            if self._count_item_kind("timber") < 6 and self.rng.random() < 0.12:
+                tree_target = self._find_tree_for_chop(dwarf.z)
+                if tree_target:
+                    tree_target.reserved_by = dwarf.id
+                    return self._new_job(
+                        kind="chop_tree",
+                        labor="harvest",
+                        target_id=tree_target.id,
+                        destination=(tree_target.x, tree_target.y, tree_target.z),
+                        phase="to_tree",
+                        remaining=4,
+                    )
             farm = self._find_farm_with_crops(z=dwarf.z)
             if farm:
                 farm.crop_available -= 1
@@ -161,25 +225,34 @@ class JobSystemsMixin(JobExecutionMixin):
 
         if not self._labor_allowed(dwarf, job.labor):
             self._release_job_item(dwarf, job)
+            self._release_job_flora(dwarf, job)
             dwarf.job = None
             dwarf.state = "idle"
             return
 
         # Emergency preemption: survival needs can interrupt non-essential workshop throughput.
         if job.kind == "workshop_task":
-            if (self.raw_food + self.cooked_food) <= 2 and dwarf.needs["hunger"] >= 80:
+            if self._available_food_items() <= 2 and dwarf.needs["hunger"] >= 80:
                 self._release_job_item(dwarf, job)
+                self._release_job_flora(dwarf, job)
                 dwarf.job = None
                 dwarf.state = "idle"
                 return
             if self.drinks == 0 and dwarf.needs["thirst"] >= 75:
                 self._release_job_item(dwarf, job)
+                self._release_job_flora(dwarf, job)
                 dwarf.job = None
                 dwarf.state = "idle"
                 return
 
         if job.kind == "haul":
             self._perform_haul_step(dwarf, job)
+            return
+        if job.kind == "gather_flora":
+            self._perform_gather_flora_step(dwarf, job)
+            return
+        if job.kind == "chop_tree":
+            self._perform_chop_tree_step(dwarf, job)
             return
         if job.kind == "workshop_task":
             self._perform_workshop_task_step(dwarf, job)
@@ -217,6 +290,7 @@ class JobSystemsMixin(JobExecutionMixin):
             if self.rng.random() < 0.25:
                 self._spawn_item("raw_food", dwarf.x, dwarf.y, dwarf.z, material="wild-berry", perishability=95, value=1)
             self._gain_skill(dwarf, "harvest", 1)
+            self.economy_stats["foraged_herb"] = self.economy_stats.get("foraged_herb", 0) + 1
         elif job.kind == "recover":
             dwarf.hp = clamp(dwarf.hp + 10, 0, 100)
             if dwarf.wounds and self.rng.random() < 0.6:
@@ -287,3 +361,89 @@ class JobSystemsMixin(JobExecutionMixin):
 
     def _gain_skill(self, dwarf: Dwarf, labor: str, amount: int) -> None:
         dwarf.skills[labor] = dwarf.skills.get(labor, 0) + amount
+
+    def _count_item_kind(self, kind: str) -> int:
+        return sum(1 for i in self.items if i.kind == kind)
+
+    def _available_food_items(self) -> int:
+        edible = {"raw_food", "cooked_food", "berry", "herb", "rare_plant"}
+        return sum(1 for i in self.items if i.kind in edible)
+
+    def _release_job_flora(self, dwarf: Dwarf, job: Job) -> None:
+        flora = self._find_flora_by_id(job.target_id)
+        if flora and flora.reserved_by == dwarf.id:
+            flora.reserved_by = None
+
+    def _perform_gather_flora_step(self, dwarf: Dwarf, job: Job) -> None:
+        flora = self._find_flora_by_id(job.target_id)
+        dwarf.state = "gather_flora"
+        if not flora or flora.dead:
+            self._release_job_flora(dwarf, job)
+            dwarf.job = None
+            dwarf.state = "idle"
+            return
+        job.destination = (flora.x, flora.y, flora.z)
+        if job.phase == "to_flora":
+            self._step_move_toward(dwarf, job.destination)
+            if dwarf.pos == job.destination:
+                job.phase = "gathering"
+                job.remaining = 2
+            return
+        if job.phase == "gathering":
+            job.remaining -= 1
+            if job.remaining > 0:
+                return
+            for kind, material, value, perishability in self._flora_forage_yields(flora):
+                self._spawn_item(kind, flora.x, flora.y, flora.z, material=material, value=value, perishability=perishability)
+                if kind == "herb":
+                    self.economy_stats["foraged_herb"] = self.economy_stats.get("foraged_herb", 0) + 1
+                elif kind == "berry":
+                    self.economy_stats["foraged_berry"] = self.economy_stats.get("foraged_berry", 0) + 1
+                elif kind == "fiber":
+                    self.economy_stats["foraged_fiber"] = self.economy_stats.get("foraged_fiber", 0) + 1
+                elif kind == "rare_plant":
+                    self.economy_stats["foraged_rare"] = self.economy_stats.get("foraged_rare", 0) + 1
+            self._apply_forage_to_flora(flora)
+            self._gain_skill(dwarf, "harvest", 1)
+            self._log("economy", f"{dwarf.name} harvested flora from {flora.common_name}.", 1)
+            dwarf.job = None
+            dwarf.state = "idle"
+
+    def _perform_chop_tree_step(self, dwarf: Dwarf, job: Job) -> None:
+        flora = self._find_flora_by_id(job.target_id)
+        dwarf.state = "chop_tree"
+        if not flora or flora.dead:
+            self._release_job_flora(dwarf, job)
+            dwarf.job = None
+            dwarf.state = "idle"
+            return
+        if not self._is_tree_choppable(flora):
+            self._release_job_flora(dwarf, job)
+            dwarf.job = None
+            dwarf.state = "idle"
+            return
+        job.destination = (flora.x, flora.y, flora.z)
+        if job.phase == "to_tree":
+            self._step_move_toward(dwarf, job.destination)
+            if dwarf.pos == job.destination:
+                job.phase = "chopping"
+                job.remaining = 3
+            return
+        if job.phase == "chopping":
+            job.remaining -= 1
+            if job.remaining > 0:
+                return
+            logs = self._tree_timber_yield(flora)
+            wood_material = flora.common_name.lower().split(" ")[-1]
+            for _ in range(logs):
+                self._spawn_item("timber", flora.x, flora.y, flora.z, material=wood_material, value=3)
+            self.economy_stats["timber_harvested"] = self.economy_stats.get("timber_harvested", 0) + logs
+            self.economy_stats["trees_felled_recent"] = self.economy_stats.get("trees_felled_recent", 0) + 1
+            self._apply_tree_chop(flora)
+            if self.economy_stats.get("trees_felled_recent", 0) >= 6:
+                self._log("economy", "Overharvest warning: tree felling is outpacing regrowth.", 2)
+                self.economy_stats["trees_felled_recent"] = 0
+            self._gain_skill(dwarf, "harvest", 1)
+            self._log("economy", f"{dwarf.name} felled {flora.common_name} for timber.", 1)
+            dwarf.job = None
+            dwarf.state = "idle"

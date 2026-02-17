@@ -36,6 +36,19 @@ class NeedsSystemsMixin:
                 d.stress = clamp(d.stress + 1, 0, 100)
                 d.morale = clamp(d.morale - 1, 0, 100)
 
+            # Sustained deprivation should eventually become lethal, but slowly.
+            if d.needs["hunger"] >= 96 and self.tick_count % 6 == 0:
+                d.hp = clamp(d.hp - 1, 0, 100)
+                d.morale = clamp(d.morale - 1, 0, 100)
+            if d.needs["thirst"] >= 96 and self.tick_count % 4 == 0:
+                d.hp = clamp(d.hp - 2, 0, 100)
+                d.morale = clamp(d.morale - 1, 0, 100)
+            if d.needs["sleep"] >= 98 and self.tick_count % 8 == 0:
+                d.hp = clamp(d.hp - 1, 0, 100)
+            if d.needs["hunger"] >= 96 or d.needs["thirst"] >= 96:
+                if self.tick_count % 10 == 0:
+                    self._log("health", f"{d.name} is physically weakening from deprivation.", 2)
+
             if d.alcohol_dependency >= 45 and self.drinks == 0 and d.needs["alcohol"] >= 85:
                 d.withdrawal_ticks += 1
                 if self.tick_count % 3 == 0:
@@ -51,8 +64,14 @@ class NeedsSystemsMixin:
             high_needs = sum(1 for key in critical_need_keys if d.needs.get(key, 0) >= 90)
             if high_needs == 0:
                 d.stress = clamp(d.stress - 1, 0, 100)
+                if d.stress < 40 and self.tick_count % 6 == 0:
+                    d.morale = clamp(d.morale + 1, 0, 100)
             else:
                 d.stress = clamp(d.stress + high_needs - (1 if d.morale > 60 else 0), 0, 100)
+                if high_needs >= 2 and self.tick_count % 4 == 0:
+                    d.morale = clamp(d.morale - 1, 0, 100)
+            if d.stress >= 85 and self.tick_count % 3 == 0:
+                d.morale = clamp(d.morale - 1, 0, 100)
             if d.stress >= 96 and d.mood != "tantrum":
                 d.mood = "tantrum"
                 self._log("mood", f"{d.name} is having a tantrum.", 2)

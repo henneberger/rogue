@@ -70,6 +70,12 @@ class RenderMixin:
                 "hide": "H",
                 "bed": "B",
                 "artifact": "*",
+                "timber": "L",
+                "herb": "h",
+                "berry": "b",
+                "rare_plant": "r",
+                "manuscript": "M",
+                "performance_record": "P",
             }.get(item.kind, "i")
             grid[iy][ix] = ch
 
@@ -84,7 +90,7 @@ class RenderMixin:
         lines = [
             f"Tick {self.tick_count} | z={z} | day={self.world.day} {self.world.season} | weather={self.world.weather} temp={self.world.temperature_c}C",
             f"food raw={self.raw_food} cooked={self.cooked_food} drink={self.drinks} flora={len(self.floras)} wealth={self.world.wealth} raid={self.world.raid_active}",
-            'Legend: D dwarf, a animal, workshops (lower=construction upper=built), f/r/t/d/h/p/b zones, stockpiles s c q m g u + S, flora , ; " * + t y T Y A x, items R C A W O E F H B *',
+            'Legend: D dwarf, a animal, workshops (lower=construction upper=built), f/r/t/d/h/p/b zones, stockpiles s c q m g u + S, flora , ; " * + t y T Y A x, items R C A W O E F H B * L h b r M P',
         ]
         lines.extend("".join(row) for row in grid)
         return "\n".join(lines)
@@ -134,13 +140,28 @@ class RenderMixin:
     def panel(self, name: str) -> str:
         name = name.lower()
         if name == "world":
+            active_mandates = [m for m in self.mandates if not m.fulfilled and not m.failed]
+            timber_materials: Dict[str, int] = {}
+            for item in self.items:
+                if item.kind != "timber":
+                    continue
+                timber_materials[item.material] = timber_materials.get(item.material, 0) + 1
+            timber_top = ", ".join(
+                f"{mat}={count}" for mat, count in sorted(timber_materials.items(), key=lambda kv: kv[1], reverse=True)[:4]
+            )
+            timber_top = timber_top or "none"
+            rep_gain = self.economy_stats.get("mandate_reputation_gained", 0)
+            rep_loss = self.economy_stats.get("mandate_reputation_lost", 0)
             return (
                 f"world={self.world.world_name} fortress_region={self.world.fortress_region_id}\n"
                 f"day={self.world.day} season={self.world.season} weather={self.world.weather} temp={self.world.temperature_c}C\n"
                 f"biome={self.world.biome} wealth={self.world.wealth}\n"
                 f"water_pressure={self.world.water_pressure} magma_pressure={self.world.magma_pressure}\n"
                 f"raid_active={self.world.raid_active} threat={self.world.threat_level}\n"
-                f"regions={len(self.regions)} history_events={len(self.world_history)}"
+                f"regions={len(self.regions)} history_events={len(self.world_history)}\n"
+                f"timber_harvested={self.economy_stats.get('timber_harvested', 0)} forage_total={self.economy_stats.get('foraged_herb', 0) + self.economy_stats.get('foraged_berry', 0) + self.economy_stats.get('foraged_fiber', 0) + self.economy_stats.get('foraged_rare', 0)} active_mandates={len(active_mandates)}\n"
+                f"timber_species={timber_top}\n"
+                f"mandate_trade_impact=wealth+{self.economy_stats.get('mandate_wealth_earned', 0)} rep+{rep_gain} rep-{rep_loss}"
             )
         if name == "worldgen":
             lines = [
@@ -186,7 +207,26 @@ class RenderMixin:
                 f"[{c.id}] t{c.tick} dwarf={c.dwarf_id} {c.kind} resolved={c.resolved}" for c in self.crimes[-20:]
             ) or "no crimes"
         if name == "culture":
-            return f"culture_points={self.world.culture_points} scholarly_points={self.world.scholarly_points}"
+            lines = [
+                f"culture_points={self.world.culture_points} scholarly_points={self.world.scholarly_points}",
+                f"cultural_goods_created={self.economy_stats.get('cultural_goods_created', 0)}",
+                "Mandates:",
+            ]
+            mandates = sorted(
+                self.mandates,
+                key=lambda m: (m.fulfilled or m.failed, m.due_tick),
+            )[:12]
+            if mandates:
+                for m in mandates:
+                    status = "fulfilled" if m.fulfilled else ("failed" if m.failed else "active")
+                    issuer = self._find_faction(m.issuer_faction_id)
+                    issuer_name = issuer.name if issuer else f"Faction#{m.issuer_faction_id}"
+                    lines.append(
+                        f"  [{m.id}] {status} issuer={issuer_name} kind={m.kind} item={m.requested_item_kind} progress={m.delivered_amount}/{m.requested_amount} due=t{m.due_tick}"
+                    )
+            else:
+                lines.append("  none")
+            return "\n".join(lines)
         if name == "dwarves":
             lines = []
             for d in self.dwarves:
@@ -200,6 +240,7 @@ class RenderMixin:
                 return "no flora"
             stage_counts: Dict[str, int] = {}
             species_counts: Dict[str, int] = {}
+            timber_species: Dict[str, int] = {}
             stress = 0
             dormant = 0
             dead = 0
@@ -210,9 +251,29 @@ class RenderMixin:
                 stress += 1 if fl.stressed else 0
                 dormant += 1 if fl.dormant else 0
                 dead += 1 if fl.dead else 0
+            for item in self.items:
+                if item.kind != "timber":
+                    continue
+                timber_species[item.material] = timber_species.get(item.material, 0) + 1
             lines = [
                 f"Flora Summary: total={len(self.floras)} stressed={stress} dormant={dormant} dead={dead}",
                 "Stages: " + ", ".join(f"{k}={v}" for k, v in sorted(stage_counts.items())),
+                "Yields: "
+                + ", ".join(
+                    [
+                        f"herb={self.economy_stats.get('foraged_herb', 0)}",
+                        f"berry={self.economy_stats.get('foraged_berry', 0)}",
+                        f"fiber={self.economy_stats.get('foraged_fiber', 0)}",
+                        f"rare={self.economy_stats.get('foraged_rare', 0)}",
+                        f"timber={self.economy_stats.get('timber_harvested', 0)}",
+                    ]
+                ),
+                (
+                    "Timber species (stock): "
+                    + ", ".join(f"{mat}={count}" for mat, count in sorted(timber_species.items(), key=lambda kv: kv[1], reverse=True)[:4])
+                )
+                if timber_species
+                else "Timber species (stock): none",
                 "Species (top 12):",
             ]
             for label, count in sorted(species_counts.items(), key=lambda kv: kv[1], reverse=True)[:12]:
