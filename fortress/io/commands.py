@@ -10,6 +10,12 @@ class CommandMixin:
         raw = raw.strip()
         if not raw:
             return ""
+        if raw == ".":
+            raw = "tick 1"
+        elif raw == ">":
+            raw = f"z {self.selected_z + 1}"
+        elif raw == "<":
+            raw = f"z {self.selected_z - 1}"
         parts = shlex.split(raw)
         cmd = parts[0].lower()
 
@@ -179,6 +185,9 @@ def help_text() -> str:
     return (
         "Commands:\n"
         "  help\n"
+        "  . (tick one step)\n"
+        "  < (move z-level up)\n"
+        "  > (move z-level down)\n"
         "  render [z]\n"
         "  render geology [z]\n"
         "  status\n"
