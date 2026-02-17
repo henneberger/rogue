@@ -355,6 +355,8 @@ class GameHelpersMixin:
                 i.x, i.y, i.z = d.x, d.y, d.z
 
     def _log(self, kind: str, text: str, severity: int) -> None:
+        if kind == "flora":
+            return
         e = Event(tick=self.tick_count, kind=kind, text=text, severity=severity)
         self.events.append(e)
         if len(self.events) > 400:
