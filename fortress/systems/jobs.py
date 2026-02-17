@@ -286,7 +286,7 @@ class JobSystemsMixin(JobExecutionMixin):
             to_z = job.target_id if job.target_id is not None else dwarf.z
             dwarf.z = clamp(to_z, 0, self.depth - 1)
             self._gain_skill(dwarf, "mine", 1)
-            self._spawn_item("stone", dwarf.x, dwarf.y, dwarf.z, material="granite", value=1)
+            self._resolve_geology_mining(dwarf.x, dwarf.y, dwarf.z, miner=dwarf)
             self._log("mining", f"A stairway was dug at ({dwarf.x},{dwarf.y}) to z={dwarf.z}", 1)
         elif job.kind == "harvest":
             self._spawn_item("raw_food", dwarf.x, dwarf.y, dwarf.z, material="plump-helmet", perishability=130, value=2)

@@ -67,6 +67,7 @@ class RenderMixin:
                 "wood": "W",
                 "stone": "O",
                 "ore": "E",
+                "gem": "J",
                 "fiber": "F",
                 "hide": "H",
                 "bed": "B",
@@ -96,7 +97,7 @@ class RenderMixin:
         lines = [
             f"Tick {self.tick_count} | z={z} | day={self.world.day} {self.world.season} | weather={self.world.weather} temp={self.world.temperature_c}C",
             f"food raw={self.raw_food} cooked={self.cooked_food} drink={self.drinks} flora={len(self.floras)} wealth={self.world.wealth} raid={self.world.raid_active}",
-            'Legend: D dwarf, a animal, workshops (lower=construction upper=built), f/r/t/d/h/p/b zones, stockpiles s c q k m g u + S, flora , ; " * + t y T Y A x, items R C A W O E F H B * L h b r M P X U N Q G',
+            'Legend: D dwarf, a animal, workshops (lower=construction upper=built), f/r/t/d/h/p/b zones, stockpiles s c q k m g u + S, flora , ; " * + t y T Y A x, items R C A W O E J F H B * L h b r M P X U N Q G',
         ]
         lines.extend("".join(row) for row in grid)
         return "\n".join(lines)
@@ -318,7 +319,46 @@ class RenderMixin:
                     f"[{room.id}] {room.kind} ({room.x},{room.y},{room.z},{room.w},{room.h}) value={room.value} bed={room.bed_item_id} assigned={room.assigned_dwarf_id}"
                 )
             return "\n".join(lines) if len(lines) > 1 else "no rooms"
+        if name == "geology":
+            discovered = [d for d in self.geology_deposits if d.discovered]
+            remaining = [d for d in self.geology_deposits if d.remaining_yield > 0]
+            ore_keys = sorted(k for k in self.economy_stats if k.startswith("geology_extracted_ore_"))
+            gem_keys = sorted(k for k in self.economy_stats if k.startswith("geology_extracted_gem_"))
+            depth_keys = sorted(k for k in self.economy_stats if k.startswith("geology_depth_") and k.endswith("_extracted"))
+            lines = [
+                "Geology:",
+                "  strata=" + ", ".join(f"z{z}:{name}" for z, name in sorted(self.geology_strata.items())),
+                f"  deposits_total={len(self.geology_deposits)} discovered={len(discovered)} remaining={len(remaining)}",
+                f"  caverns_tiles={len(self.geology_cavern_tiles)} breached={len(self.geology_breached_tiles)}",
+            ]
+            if ore_keys:
+                lines.append("  extracted_ore=" + ", ".join(f"{k.replace('geology_extracted_ore_', '')}:{self.economy_stats[k]}" for k in ore_keys))
+            else:
+                lines.append("  extracted_ore=none")
+            if gem_keys:
+                lines.append("  extracted_gem=" + ", ".join(f"{k.replace('geology_extracted_gem_', '')}:{self.economy_stats[k]}" for k in gem_keys))
+            else:
+                lines.append("  extracted_gem=none")
+            if depth_keys:
+                lines.append("  depth_activity=" + ", ".join(f"z{k.split('_')[2]}:{self.economy_stats[k]}" for k in depth_keys))
+            if discovered:
+                lines.append("  known_deposits:")
+                for d in sorted(discovered, key=lambda dep: (dep.z, dep.id))[:10]:
+                    lines.append(
+                        f"    [{d.id}] {d.kind} {d.material} rarity={d.rarity} at ({d.x},{d.y},{d.z}) rem={d.remaining_yield}/{d.total_yield}"
+                    )
+            return "\n".join(lines)
         return "unknown panel"
+
+    def prospect(self, x: int, y: int, z: int) -> str:
+        self._validate_point(x, y, z)
+        dep = next((d for d in self.geology_deposits if d.x == x and d.y == y and d.z == z), None)
+        if dep and dep.remaining_yield > 0:
+            status = "known" if dep.discovered else "faint"
+            return f"prospect ({x},{y},{z}): {status} traces of {dep.material} ({dep.kind}, {dep.rarity})"
+        if (x, y, z) in self.geology_cavern_tiles:
+            return f"prospect ({x},{y},{z}): hollow resonance detected (cavern)"
+        return f"prospect ({x},{y},{z}): no notable signs"
 
     def items_dump(self) -> str:
         lines = []

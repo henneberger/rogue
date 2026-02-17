@@ -9,6 +9,7 @@ from fortress.models import (
     Event,
     Faction,
     Flora,
+    GeologyDeposit,
     Item,
     Squad,
     Stockpile,
@@ -56,6 +57,55 @@ class GameHelpersMixin:
         if flora_id is None:
             return None
         return next((fl for fl in self.floras if fl.id == flora_id), None)
+
+    def _find_geology_deposit_at(self, x: int, y: int, z: int) -> Optional[GeologyDeposit]:
+        return next(
+            (
+                dep
+                for dep in self.geology_deposits
+                if dep.x == x and dep.y == y and dep.z == z and dep.remaining_yield > 0
+            ),
+            None,
+        )
+
+    def _resolve_geology_mining(self, x: int, y: int, z: int, miner: Optional[Dwarf] = None) -> None:
+        dep = self._find_geology_deposit_at(x, y, z)
+        if dep:
+            if not dep.discovered:
+                dep.discovered = True
+                self.economy_stats["geology_discoveries"] = self.economy_stats.get("geology_discoveries", 0) + 1
+                self._log("geology", f"Discovered {dep.material} {dep.kind} deposit ({dep.rarity}) at ({x},{y},{z}).", 2)
+            dep.remaining_yield = max(0, dep.remaining_yield - 1)
+            if dep.kind == "ore":
+                ore_meta = self.defs.get("geology_ores", {}).get(dep.material, {})
+                value = int(ore_meta.get("value", 4))
+                self._spawn_item("ore", x, y, z, material=dep.material, value=value)
+                key = f"geology_extracted_ore_{dep.material}"
+                self.economy_stats[key] = self.economy_stats.get(key, 0) + 1
+            else:
+                gem_meta = self.defs.get("geology_gems", {}).get(dep.material, {})
+                value = int(gem_meta.get("value", 10))
+                self._spawn_item("gem", x, y, z, material=dep.material, value=value)
+                key = f"geology_extracted_gem_{dep.material}"
+                self.economy_stats[key] = self.economy_stats.get(key, 0) + 1
+            depth_key = f"geology_depth_{z}_extracted"
+            self.economy_stats[depth_key] = self.economy_stats.get(depth_key, 0) + 1
+            if dep.remaining_yield == 0:
+                self._log("geology", f"{dep.material} deposit at ({x},{y},{z}) is depleted.", 1)
+        else:
+            self._spawn_item("stone", x, y, z, material="granite", value=1)
+
+        tile = (x, y, z)
+        if tile in self.geology_cavern_tiles and tile not in self.geology_breached_tiles:
+            self.geology_breached_tiles.add(tile)
+            self.economy_stats["caverns_breached"] = self.economy_stats.get("caverns_breached", 0) + 1
+            self._log("geology", f"Cavern breach at ({x},{y},{z})! Strange echoes from below...", 3)
+            for d in self.dwarves:
+                d.needs["safety"] = clamp(d.needs["safety"] + 12, 0, 100)
+            if self.rng.random() < 0.35:
+                self.world.raid_active = True
+                self.world.threat_level = max(self.world.threat_level, 1)
+                self._log("geology", "Cavern wildlife has stirred and threatens the outpost.", 2)
 
     def _find_farm_with_crops(self, z: Optional[int] = None) -> Optional[Zone]:
         return next((f for f in self.zones if f.kind == "farm" and f.crop_available > 0 and (z is None or f.z == z)), None)

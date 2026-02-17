@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import random
 
-from fortress.models import HistoricalEvent, Region
+from fortress.models import GeologyDeposit, HistoricalEvent, Region
 
 
 class WorldgenMixin:
@@ -112,3 +112,127 @@ class WorldgenMixin:
                 home_region_id=home_region_id,
                 civ_type=civ_type,
             )
+
+    def _generate_geology(self) -> None:
+        geo_rng = random.Random(self.rng_seed + 1009)
+        self.geology_deposits = []
+        self.geology_strata = {}
+        self.geology_cavern_tiles = set()
+        self.geology_breached_tiles = set()
+        next_dep_id = 1
+
+        # Depth-biased strata: shallow sedimentary, deep igneous/metamorphic.
+        for z in range(self.depth):
+            if z <= max(0, self.depth // 3 - 1):
+                self.geology_strata[z] = "sedimentary-shale"
+            elif z >= max(1, self.depth - 1):
+                self.geology_strata[z] = "igneous-basalt"
+            else:
+                self.geology_strata[z] = "metamorphic-schist"
+
+        region = next((r for r in self.regions if r.id == self.world.fortress_region_id), None)
+        elev = getattr(region, "elevation", "uplands")
+        ore_bias = {"lowlands": 0.85, "uplands": 1.0, "mountainous": 1.3}.get(elev, 1.0)
+        biome = self.world.biome
+        gem_bias = 1.2 if biome in {"alpine", "highland-heath"} else 1.0
+
+        ores = self.defs.get("geology_ores", {})
+        gems = self.defs.get("geology_gems", {})
+
+        used = set()
+        area = self.width * self.height
+        deposit_target = max(8, int((area * max(1, self.depth - 1)) / 32))
+        deposit_target = int(deposit_target * ore_bias)
+        deposit_target = min(deposit_target, 48)
+
+        deep_min_z = 1 if self.depth > 1 else 0
+
+        def pick_free_pos(min_z: int = deep_min_z):
+            for _ in range(80):
+                x = geo_rng.randint(0, self.width - 1)
+                y = geo_rng.randint(0, self.height - 1)
+                z = geo_rng.randint(min_z, self.depth - 1)
+                if (x, y, z) in used:
+                    continue
+                used.add((x, y, z))
+                return x, y, z
+            return None
+
+        ore_count = int(deposit_target * 0.72)
+        gem_count = max(3, int(deposit_target * 0.28 * gem_bias))
+
+        for _ in range(ore_count):
+            pos = pick_free_pos(min_z=deep_min_z)
+            if not pos:
+                break
+            x, y, z = pos
+            eligible = [
+                (mat, meta)
+                for mat, meta in ores.items()
+                if int(meta.get("min_depth", 1)) <= z <= int(meta.get("max_depth", self.depth - 1))
+            ]
+            if not eligible:
+                continue
+            mat, meta = geo_rng.choice(eligible)
+            rarity = str(meta.get("rarity", "common"))
+            base = {"common": (3, 6), "uncommon": (2, 4), "rare": (1, 3)}.get(rarity, (2, 4))
+            total = geo_rng.randint(base[0], base[1])
+            self.geology_deposits.append(
+                GeologyDeposit(
+                    id=next_dep_id,
+                    x=x,
+                    y=y,
+                    z=z,
+                    kind="ore",
+                    material=mat,
+                    rarity=rarity,
+                    total_yield=total,
+                    remaining_yield=total,
+                )
+            )
+            next_dep_id += 1
+
+        for _ in range(gem_count):
+            pos = pick_free_pos(min_z=deep_min_z)
+            if not pos:
+                break
+            x, y, z = pos
+            # Gem pockets are depth-biased toward deeper levels.
+            if geo_rng.random() < 0.6:
+                z = self.depth - 1
+            eligible = [
+                (mat, meta)
+                for mat, meta in gems.items()
+                if int(meta.get("min_depth", 1)) <= z <= int(meta.get("max_depth", self.depth - 1))
+            ]
+            if not eligible:
+                continue
+            mat, meta = geo_rng.choice(eligible)
+            rarity = str(meta.get("rarity", "common"))
+            base = {"common": (1, 2), "uncommon": (1, 2), "rare": (1, 1)}.get(rarity, (1, 2))
+            total = geo_rng.randint(base[0], base[1])
+            self.geology_deposits.append(
+                GeologyDeposit(
+                    id=next_dep_id,
+                    x=x,
+                    y=y,
+                    z=z,
+                    kind="gem",
+                    material=mat,
+                    rarity=rarity,
+                    total_yield=total,
+                    remaining_yield=total,
+                )
+            )
+            next_dep_id += 1
+
+        # Cavern regions: contiguous open pockets on deeper bands.
+        cavern_z = self.depth - 1
+        for _ in range(2):
+            cx = geo_rng.randint(3, max(3, self.width - 4))
+            cy = geo_rng.randint(3, max(3, self.height - 4))
+            radius = geo_rng.randint(2, 4)
+            for yy in range(max(0, cy - radius), min(self.height, cy + radius + 1)):
+                for xx in range(max(0, cx - radius), min(self.width, cx + radius + 1)):
+                    if abs(xx - cx) + abs(yy - cy) <= radius + geo_rng.randint(0, 1):
+                        self.geology_cavern_tiles.add((xx, yy, cavern_z))

@@ -306,6 +306,24 @@ class Flora:
 
 
 @dataclass
+class GeologyDeposit:
+    id: int
+    x: int
+    y: int
+    z: int
+    kind: str  # ore | gem
+    material: str
+    rarity: str  # common | uncommon | rare
+    total_yield: int
+    remaining_yield: int
+    discovered: bool = False
+
+    @property
+    def pos(self) -> Coord3:
+        return (self.x, self.y, self.z)
+
+
+@dataclass
 class WorldState:
     world_name: str = "Unnamed World"
     day: int = 1
@@ -373,6 +391,7 @@ def item_category(kind: str) -> str:
         "artifact",
         "manuscript",
         "performance_record",
+        "gem",
         "weapon",
         "armor",
         "tool",
