@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Set
 
-from fortress.models import clamp
+from fortress.models import Mandate, clamp
 
 
 class WorldSystemsMixin:
@@ -111,3 +111,76 @@ class WorldSystemsMixin:
         friendly = next((f for f in self.factions if f.name == "River Guild"), None)
         if friendly:
             friendly.reputation += 1
+
+    def _economy_tick(self) -> None:
+        if self.tick_count % 40 == 0:
+            self.economy_stats["trees_felled_recent"] = max(0, self.economy_stats.get("trees_felled_recent", 0) - 1)
+
+        active = [m for m in self.mandates if not m.fulfilled and not m.failed]
+        if len(active) < 2 and self.tick_count % 120 == 0:
+            self._generate_mandate()
+
+        for mandate in self.mandates:
+            if mandate.fulfilled or mandate.failed:
+                continue
+            available = sum(1 for i in self.items if i.kind == mandate.requested_item_kind)
+            mandate.delivered_amount = min(available, mandate.requested_amount)
+            if mandate.delivered_amount >= mandate.requested_amount:
+                mandate.fulfilled = True
+                faction = self._find_faction(mandate.issuer_faction_id)
+                if faction:
+                    faction.reputation += mandate.reward_reputation
+                self.economy_stats["mandate_reputation_gained"] = self.economy_stats.get("mandate_reputation_gained", 0) + mandate.reward_reputation
+                self.world.wealth += mandate.reward_wealth
+                self.economy_stats["mandate_wealth_earned"] = self.economy_stats.get("mandate_wealth_earned", 0) + mandate.reward_wealth
+                self.economy_stats["mandates_fulfilled"] = self.economy_stats.get("mandates_fulfilled", 0) + 1
+                self._log(
+                    "mandate",
+                    f"Mandate #{mandate.id} fulfilled ({mandate.requested_item_kind} x{mandate.requested_amount}).",
+                    1,
+                )
+            elif self.tick_count > mandate.due_tick:
+                mandate.failed = True
+                faction = self._find_faction(mandate.issuer_faction_id)
+                if faction:
+                    faction.reputation -= mandate.penalty_reputation
+                self.economy_stats["mandate_reputation_lost"] = self.economy_stats.get("mandate_reputation_lost", 0) + mandate.penalty_reputation
+                self.economy_stats["mandates_failed"] = self.economy_stats.get("mandates_failed", 0) + 1
+                self._log(
+                    "mandate",
+                    f"Mandate #{mandate.id} expired ({mandate.requested_item_kind} x{mandate.requested_amount}).",
+                    2,
+                )
+
+    def _generate_mandate(self) -> None:
+        if not self.factions:
+            return
+        issuer = self.rng.choice(self.factions)
+        options = [
+            ("ecology", "herb", (3, 6)),
+            ("ecology", "berry", (3, 6)),
+            ("timber", "timber", (3, 5)),
+            ("culture", "manuscript", (1, 3)),
+            ("culture", "performance_record", (1, 3)),
+            ("culture", "artifact", (1, 2)),
+        ]
+        kind, item_kind, (lo, hi) = self.rng.choice(options)
+        amount = self.rng.randint(lo, hi)
+        mandate = Mandate(
+            id=self.next_mandate_id,
+            issuer_faction_id=issuer.id,
+            kind=kind,
+            requested_item_kind=item_kind,
+            requested_amount=amount,
+            due_tick=self.tick_count + self.rng.randint(120, 220),
+            reward_reputation=self.rng.randint(4, 8),
+            reward_wealth=self.rng.randint(14, 34),
+            penalty_reputation=self.rng.randint(3, 7),
+        )
+        self.next_mandate_id += 1
+        self.mandates.append(mandate)
+        self._log(
+            "mandate",
+            f"New {kind} mandate from {issuer.name}: {item_kind} x{amount} by t{mandate.due_tick}.",
+            1,
+        )

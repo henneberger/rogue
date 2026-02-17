@@ -72,6 +72,67 @@ class FloraSystemsMixin:
                 out.append(sp)
         return out
 
+    def _is_forage_ready(self, flora: Flora) -> bool:
+        if flora.dead or flora.kind != "plant":
+            return False
+        return flora.stage in {"juvenile", "mature", "flowering", "seeded"}
+
+    def _is_tree_choppable(self, flora: Flora) -> bool:
+        if flora.dead or flora.kind != "tree":
+            return False
+        return flora.stage in {"sapling", "young", "mature", "ancient"}
+
+    def _find_forageable_flora(self, z: int) -> Optional[Flora]:
+        candidates = [fl for fl in self.floras if fl.z == z and fl.reserved_by is None and self._is_forage_ready(fl)]
+        if not candidates:
+            return None
+        candidates.sort(key=lambda fl: (self._flora_stage_index(fl), fl.health, -fl.id), reverse=True)
+        return candidates[0]
+
+    def _find_tree_for_chop(self, z: int) -> Optional[Flora]:
+        candidates = [fl for fl in self.floras if fl.z == z and fl.reserved_by is None and self._is_tree_choppable(fl)]
+        if not candidates:
+            return None
+        candidates.sort(key=lambda fl: (self._flora_stage_index(fl), fl.health, -fl.id), reverse=True)
+        return candidates[0]
+
+    def _flora_forage_yields(self, flora: Flora) -> List[Tuple[str, str, int, int]]:
+        yields: List[Tuple[str, str, int, int]] = []
+        species = flora.scientific_name.lower()
+        base_herb = "herb"
+        base_mat = species.replace(" ", "-")
+        if "vaccinium" in species or "myosotis" in species:
+            yields.append(("berry", f"{base_mat}-berry", 2, 90))
+        if "pteridium" in species or "allium" in species:
+            yields.append(("herb", f"{base_mat}-herb", 2, 120))
+        if "sphagnum" in species or "cladonia" in species:
+            yields.append(("fiber", f"{base_mat}-fiber", 2, 0))
+        if flora.stage in {"flowering", "seeded"}:
+            yields.append(("berry", f"{base_mat}-seedpod", 2, 85))
+            if self.rng.random() < 0.25:
+                yields.append(("rare_plant", f"{base_mat}-rare-cutting", 5, 150))
+        if not yields:
+            yields.append((base_herb, f"{base_mat}-forage", 2, 110))
+        return yields
+
+    def _apply_forage_to_flora(self, flora: Flora) -> None:
+        flora.reserved_by = None
+        flora.health = clamp(flora.health - 8, 0, 100)
+        regress = {"seeded": "mature", "flowering": "juvenile", "mature": "juvenile", "juvenile": "sprout"}
+        flora.stage = regress.get(flora.stage, flora.stage)
+        flora.growth_points = 0
+
+    def _tree_timber_yield(self, flora: Flora) -> int:
+        stage_to_logs = {"sapling": 1, "young": 1, "mature": 2, "ancient": 3}
+        return stage_to_logs.get(flora.stage, 1)
+
+    def _apply_tree_chop(self, flora: Flora) -> None:
+        flora.reserved_by = None
+        flora.stage = "seedling"
+        flora.health = max(35, flora.health - 20)
+        flora.growth_points = 0
+        flora.spread_cooldown = max(flora.spread_cooldown, 45)
+
     def _flora_stage_index(self, flora: Flora) -> int:
         stages = self._flora_species().get(flora.species_id, {}).get("stages", [])
         try:

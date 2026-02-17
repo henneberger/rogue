@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Optional, Tuple
 
-from fortress.models import Coord3, Dwarf, Event, Faction, Item, Squad, Stockpile, Workshop, Zone, clamp
+from fortress.models import Coord3, Dwarf, Event, Faction, Flora, Item, Squad, Stockpile, Workshop, Zone, clamp
 
 
 class GameHelpersMixin:
@@ -37,6 +37,11 @@ class GameHelpersMixin:
         if item_id is None:
             return None
         return next((i for i in self.items if i.id == item_id), None)
+
+    def _find_flora_by_id(self, flora_id: Optional[int]) -> Optional[Flora]:
+        if flora_id is None:
+            return None
+        return next((fl for fl in self.floras if fl.id == flora_id), None)
 
     def _find_farm_with_crops(self, z: Optional[int] = None) -> Optional[Zone]:
         return next((f for f in self.zones if f.kind == "farm" and f.crop_available > 0 and (z is None or f.z == z)), None)

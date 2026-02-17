@@ -15,8 +15,10 @@ from fortress.models import (
     Faction,
     Flora,
     HistoricalEvent,
+    Item,
     Job,
     LABORS,
+    Mandate,
     Region,
     Room,
     Squad,
@@ -71,6 +73,7 @@ class Game(
     next_crime_id: int = 1
     next_room_id: int = 1
     next_flora_id: int = 1
+    next_mandate_id: int = 1
     max_flora: int = 80
     zones: List[Zone] = field(default_factory=list)
     stockpiles: List[Stockpile] = field(default_factory=list)
@@ -84,12 +87,29 @@ class Game(
     world_history: List[HistoricalEvent] = field(default_factory=list)
     rooms: List[Room] = field(default_factory=list)
     floras: List[Flora] = field(default_factory=list)
+    mandates: List[Mandate] = field(default_factory=list)
     crimes: List[Crime] = field(default_factory=list)
     events: List[Event] = field(default_factory=list)
     jobs: List[Job] = field(default_factory=list)
     world: WorldState = field(default_factory=WorldState)
     command_log: List[str] = field(default_factory=list)
     alerts: List[str] = field(default_factory=list)
+    economy_stats: Dict[str, int] = field(
+        default_factory=lambda: {
+            "foraged_herb": 0,
+            "foraged_berry": 0,
+            "foraged_fiber": 0,
+            "foraged_rare": 0,
+            "timber_harvested": 0,
+            "trees_felled_recent": 0,
+            "cultural_goods_created": 0,
+            "mandates_fulfilled": 0,
+            "mandates_failed": 0,
+            "mandate_wealth_earned": 0,
+            "mandate_reputation_gained": 0,
+            "mandate_reputation_lost": 0,
+        }
+    )
     defs: Dict[str, Any] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
@@ -237,6 +257,7 @@ class Game(
             self._fluid_tick()
             self._item_tick()
             self._flora_tick()
+            self._economy_tick()
             self._sync_carried_items()
             self._refresh_rooms_and_assignments()
             self.world.wealth = sum(i.value + i.quality for i in self.items)

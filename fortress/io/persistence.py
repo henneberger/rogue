@@ -14,6 +14,7 @@ from fortress.models import (
     HistoricalEvent,
     Item,
     Job,
+    Mandate,
     Region,
     Room,
     Squad,
@@ -47,6 +48,7 @@ class PersistenceMixin:
             "world_history": [asdict(h) for h in self.world_history],
             "rooms": [asdict(r) for r in self.rooms],
             "floras": [asdict(fl) for fl in self.floras],
+            "mandates": [asdict(m) for m in self.mandates],
             "crimes": [asdict(c) for c in self.crimes],
             "events": [asdict(e) for e in self.events],
             "jobs": [asdict(j) for j in self.jobs],
@@ -63,8 +65,10 @@ class PersistenceMixin:
                 "next_crime_id": self.next_crime_id,
                 "next_room_id": self.next_room_id,
                 "next_flora_id": self.next_flora_id,
+                "next_mandate_id": self.next_mandate_id,
             },
             "command_log": self.command_log,
+            "economy_stats": self.economy_stats,
             "defs": self.defs,
         }
         with open(path, "w", encoding="utf-8") as f:
@@ -115,6 +119,7 @@ class PersistenceMixin:
         g.world_history = [HistoricalEvent(**h) for h in data.get("world_history", [])]
         g.rooms = [Room(**r) for r in data.get("rooms", [])]
         g.floras = [Flora(**fl) for fl in data.get("floras", [])]
+        g.mandates = [Mandate(**m) for m in data.get("mandates", [])]
         g.crimes = [Crime(**c) for c in data["crimes"]]
         g.events = [Event(**e) for e in data["events"]]
         g.jobs = [Job(**j) for j in data["jobs"]]
@@ -131,7 +136,9 @@ class PersistenceMixin:
         g.next_crime_id = counters["next_crime_id"]
         g.next_room_id = counters.get("next_room_id", 1)
         g.next_flora_id = counters.get("next_flora_id", 1)
+        g.next_mandate_id = counters.get("next_mandate_id", 1)
         g.command_log = data.get("command_log", [])
+        g.economy_stats.update(data.get("economy_stats", {}))
         g.defs = data.get("defs", g.default_defs())
         if not g.floras:
             g._init_flora()

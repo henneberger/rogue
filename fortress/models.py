@@ -286,6 +286,7 @@ class Flora:
     stressed: bool = False
     dead: bool = False
     spread_cooldown: int = 0
+    reserved_by: Optional[int] = None
 
     @property
     def pos(self) -> Coord3:
@@ -310,8 +311,24 @@ class WorldState:
     culture_points: int = 0
 
 
+@dataclass
+class Mandate:
+    id: int
+    issuer_faction_id: int
+    kind: str  # ecology | timber | culture
+    requested_item_kind: str
+    requested_amount: int
+    delivered_amount: int = 0
+    due_tick: int = 0
+    reward_reputation: int = 6
+    reward_wealth: int = 20
+    penalty_reputation: int = 5
+    fulfilled: bool = False
+    failed: bool = False
+
+
 def item_category(kind: str) -> str:
-    if kind in {"raw_food"}:
+    if kind in {"raw_food", "herb", "berry", "rare_plant"}:
         return "raw"
     if kind in {"seed"}:
         return "materials"
@@ -319,9 +336,9 @@ def item_category(kind: str) -> str:
         return "cooked"
     if kind in {"alcohol"}:
         return "drink"
-    if kind in {"wood", "stone", "ore", "fiber", "hide"}:
+    if kind in {"wood", "stone", "ore", "fiber", "hide", "timber"}:
         return "materials"
-    if kind in {"craft_good", "artifact"}:
+    if kind in {"craft_good", "artifact", "manuscript", "performance_record"}:
         return "goods"
     if kind in {"bandage", "medicine"}:
         return "medical"
