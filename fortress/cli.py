@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import os
+import re
+import select
 import signal
 import sys
 try:
@@ -13,6 +15,9 @@ except ImportError:  # pragma: no cover
 from fortress.engine import Game
 
 
+_CSI_RE = re.compile(r"\x1b\[[0-?]*[ -/]*[@-~]")
+
+
 def _redraw(prompt: str, buf: list[str], cursor: int) -> None:
     text = "".join(buf)
     sys.stdout.write("\r\x1b[2K" + prompt + text)
@@ -22,7 +27,38 @@ def _redraw(prompt: str, buf: list[str], cursor: int) -> None:
     sys.stdout.flush()
 
 
+def _drain_ready_input(fd: int) -> str:
+    chunks: list[str] = []
+    while True:
+        ready, _, _ = select.select([fd], [], [], 0)
+        if not ready:
+            break
+        chunk = os.read(fd, 4096).decode("utf-8", errors="ignore")
+        if not chunk:
+            break
+        chunks.append(chunk)
+    return "".join(chunks)
+
+
+def _enqueue_pasted_lines(g: Game, raw_text: str) -> None:
+    if not raw_text:
+        return
+    # Strip CSI controls (e.g., bracketed paste wrappers) and normalize line endings.
+    cleaned = _CSI_RE.sub("", raw_text).replace("\r\n", "\n").replace("\r", "\n")
+    parts = cleaned.split("\n")
+    existing = getattr(g, "_repl_pending_lines", [])
+    existing.extend(parts[:-1])
+    setattr(g, "_repl_pending_lines", existing)
+    setattr(g, "_repl_prefill", parts[-1])
+
+
 def _read_command(g: Game, prompt: str) -> str | None:
+    pending = getattr(g, "_repl_pending_lines", [])
+    if pending:
+        line = pending.pop(0)
+        setattr(g, "_repl_pending_lines", pending)
+        return line
+
     # Fallback for non-TTY environments.
     if not sys.stdin.isatty() or termios is None or tty is None:
         try:
@@ -32,12 +68,17 @@ def _read_command(g: Game, prompt: str) -> str | None:
 
     history = g.command_log
     hidx = len(history)
-    buf: list[str] = []
-    cursor = 0
+    prefill = getattr(g, "_repl_prefill", "")
+    setattr(g, "_repl_prefill", "")
+    buf: list[str] = list(prefill)
+    cursor = len(buf)
     fd = sys.stdin.fileno()
     old = termios.tcgetattr(fd)
-    sys.stdout.write(prompt)
-    sys.stdout.flush()
+    if prefill:
+        _redraw(prompt, buf, cursor)
+    else:
+        sys.stdout.write(prompt)
+        sys.stdout.flush()
     try:
         tty.setraw(fd)
         while True:
@@ -45,9 +86,11 @@ def _read_command(g: Game, prompt: str) -> str | None:
             if not ch:
                 return None
             if ch in ("\r", "\n"):
+                line = "".join(buf)
+                _enqueue_pasted_lines(g, _drain_ready_input(fd))
                 sys.stdout.write("\n")
                 sys.stdout.flush()
-                return "".join(buf)
+                return line
             if ch == "\x03":
                 raise KeyboardInterrupt
             if ch == "\x04":
@@ -63,18 +106,25 @@ def _read_command(g: Game, prompt: str) -> str | None:
                     _redraw(prompt, buf, cursor)
                 continue
 
-            if ch == "\x1b":  # escape sequence (arrows, etc.)
+            if ch == "\x1b":  # escape sequence (arrows, bracketed paste controls, etc.)
                 nxt = os.read(fd, 1).decode("utf-8", errors="ignore")
                 if nxt != "[":
                     continue
-                code = os.read(fd, 1).decode("utf-8", errors="ignore")
-                if code == "A":  # up
+                seq = ""
+                while True:
+                    b = os.read(fd, 1).decode("utf-8", errors="ignore")
+                    if not b:
+                        break
+                    seq += b
+                    if 0x40 <= ord(b) <= 0x7E:
+                        break
+                if seq == "A":  # up
                     if hidx > 0:
                         hidx -= 1
                         buf = list(history[hidx])
                         cursor = len(buf)
                         _redraw(prompt, buf, cursor)
-                elif code == "B":  # down
+                elif seq == "B":  # down
                     if hidx < len(history) - 1:
                         hidx += 1
                         buf = list(history[hidx])
@@ -83,28 +133,22 @@ def _read_command(g: Game, prompt: str) -> str | None:
                         buf = []
                     cursor = len(buf)
                     _redraw(prompt, buf, cursor)
-                elif code == "C":  # right
+                elif seq == "C":  # right
                     if cursor < len(buf):
                         cursor += 1
                         _redraw(prompt, buf, cursor)
-                elif code == "D":  # left
+                elif seq == "D":  # left
                     if cursor > 0:
                         cursor -= 1
                         _redraw(prompt, buf, cursor)
-                elif code == "3":
-                    # Delete key sends ESC [ 3 ~
-                    _ = os.read(fd, 1)
+                elif seq == "3~":
+                    # Delete key sends ESC [ 3 ~.
                     if cursor < len(buf):
                         del buf[cursor]
                         _redraw(prompt, buf, cursor)
                 continue
 
             if ch.isprintable():
-                # Immediate hotkeys on empty input.
-                if not buf and cursor == 0 and ch in {".", "<", ">"}:
-                    sys.stdout.write(ch + "\n")
-                    sys.stdout.flush()
-                    return ch
                 buf.insert(cursor, ch)
                 cursor += 1
                 _redraw(prompt, buf, cursor)
