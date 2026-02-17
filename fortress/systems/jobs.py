@@ -9,21 +9,30 @@ from fortress.systems.jobs_execution import JobExecutionMixin
 class JobSystemsMixin(JobExecutionMixin):
     def _assign_job(self, dwarf: Dwarf) -> Job:
         # Critical needs first.
-        if dwarf.needs["hunger"] >= 70:
+        if dwarf.needs["hunger"] >= 75:
             meal = self._find_item(kind="cooked_food")
-            if not meal and dwarf.needs["hunger"] >= 90:
+            if not meal and dwarf.needs["hunger"] >= 95:
                 meal = self._find_item(kind="raw_food")
             if meal:
                 meal.reserved_by = dwarf.id
                 return self._new_job(kind="eat", labor="cook", item_id=meal.id, destination=self._item_pos(meal), phase="to_item")
+            if dwarf.needs["hunger"] >= 90 and self._labor_allowed(dwarf, "harvest"):
+                return self._new_job(
+                    kind="forage",
+                    labor="harvest",
+                    destination=(self.rng.randint(0, self.width - 1), self.rng.randint(0, self.height - 1), dwarf.z),
+                    remaining=3,
+                )
 
-        if dwarf.needs["alcohol"] >= 60 or dwarf.needs["thirst"] >= 70:
+        if dwarf.needs["alcohol"] >= 70 or dwarf.needs["thirst"] >= 78:
             drink = self._find_item(kind="alcohol")
             if drink:
                 drink.reserved_by = dwarf.id
                 return self._new_job(kind="drink", labor="brew", item_id=drink.id, destination=self._item_pos(drink), phase="to_item")
+            if dwarf.needs["thirst"] >= 70:
+                return self._new_job(kind="drink_water", labor="haul", destination=dwarf.pos, remaining=2)
 
-        if dwarf.needs["sleep"] >= 75 and self._find_zone("dormitory"):
+        if dwarf.needs["sleep"] >= 82 and self._find_zone("dormitory"):
             bed = self._assigned_bed_for_dwarf(dwarf.id)
             if bed and bed.reserved_by is None:
                 bed.reserved_by = dwarf.id
@@ -35,6 +44,33 @@ class JobSystemsMixin(JobExecutionMixin):
             dorm = self._find_zone("dormitory")
             if dorm:
                 return self._new_job(kind="sleep", labor="sleep", destination=dorm.random_tile(self.rng), phase="sleeping", remaining=5)
+
+        # Stress relief before non-critical work to keep day-to-day cadence human.
+        if dwarf.stress >= 70:
+            if dwarf.needs["entertainment"] >= 45 and self._find_zone("recreation", dwarf.z):
+                rec = self._find_zone("recreation", dwarf.z)
+                return self._new_job(kind="recreate", labor="recreate", destination=rec.random_tile(self.rng), remaining=3)
+            if dwarf.needs["social"] >= 45:
+                peer = next((p for p in self.dwarves if p.id != dwarf.id and p.z == dwarf.z and p.hp > 0), None)
+                if peer:
+                    return self._new_job(kind="socialize", labor="social", target_id=peer.id, destination=peer.pos, remaining=2)
+            if dwarf.needs["worship"] >= 55 and self._find_zone("temple", dwarf.z):
+                temple = self._find_zone("temple", dwarf.z)
+                return self._new_job(kind="worship", labor="worship", destination=temple.random_tile(self.rng), remaining=3)
+
+        # Keep baseline survival loops running even when players do long unattended runs.
+        if self.raw_food + self.cooked_food <= 2:
+            if self._labor_allowed(dwarf, "harvest"):
+                farm = self._find_farm_with_crops(z=dwarf.z)
+                if farm:
+                    farm.crop_available -= 1
+                    return self._new_job(
+                        kind="harvest",
+                        labor="harvest",
+                        target_id=farm.id,
+                        destination=farm.random_tile(self.rng),
+                        remaining=3,
+                    )
 
         # Hospital / medical.
         if dwarf.hp < 60 and self._find_zone("hospital") and self._labor_allowed(dwarf, "medical"):
@@ -100,14 +136,14 @@ class JobSystemsMixin(JobExecutionMixin):
                 return self._new_job(kind="haul", labor="haul", item_id=item.id, target_id=stock.id, destination=self._item_pos(item), phase="to_item")
 
         # Recreation, social, worship.
-        if dwarf.needs["entertainment"] >= 50 and self._find_zone("recreation", dwarf.z):
+        if dwarf.needs["entertainment"] >= 60 and self._find_zone("recreation", dwarf.z):
             rec = self._find_zone("recreation", dwarf.z)
             return self._new_job(kind="recreate", labor="recreate", destination=rec.random_tile(self.rng), remaining=3)
-        if dwarf.needs["social"] >= 50:
+        if dwarf.needs["social"] >= 60:
             peer = next((p for p in self.dwarves if p.id != dwarf.id and p.z == dwarf.z and p.hp > 0), None)
             if peer:
                 return self._new_job(kind="socialize", labor="social", target_id=peer.id, destination=peer.pos, remaining=2)
-        if dwarf.needs["worship"] >= 50 and self._find_zone("temple", dwarf.z):
+        if dwarf.needs["worship"] >= 60 and self._find_zone("temple", dwarf.z):
             temple = self._find_zone("temple", dwarf.z)
             return self._new_job(kind="worship", labor="worship", destination=temple.random_tile(self.rng), remaining=3)
 
@@ -128,6 +164,19 @@ class JobSystemsMixin(JobExecutionMixin):
             dwarf.job = None
             dwarf.state = "idle"
             return
+
+        # Emergency preemption: survival needs can interrupt non-essential workshop throughput.
+        if job.kind == "workshop_task":
+            if (self.raw_food + self.cooked_food) <= 2 and dwarf.needs["hunger"] >= 80:
+                self._release_job_item(dwarf, job)
+                dwarf.job = None
+                dwarf.state = "idle"
+                return
+            if self.drinks == 0 and dwarf.needs["thirst"] >= 75:
+                self._release_job_item(dwarf, job)
+                dwarf.job = None
+                dwarf.state = "idle"
+                return
 
         if job.kind == "haul":
             self._perform_haul_step(dwarf, job)
@@ -158,9 +207,15 @@ class JobSystemsMixin(JobExecutionMixin):
             self._log("mining", f"A stairway was dug at ({dwarf.x},{dwarf.y}) to z={dwarf.z}", 1)
         elif job.kind == "harvest":
             self._spawn_item("raw_food", dwarf.x, dwarf.y, dwarf.z, material="plump-helmet", perishability=130, value=2)
+            self._spawn_item("raw_food", dwarf.x, dwarf.y, dwarf.z, material="plump-helmet", perishability=130, value=2)
             self._spawn_item("seed", dwarf.x, dwarf.y, dwarf.z, material="plump-helmet-spawn", value=1)
             if self.rng.random() < 0.25:
                 self._spawn_item("fiber", dwarf.x, dwarf.y, dwarf.z, material="pig-tail", value=2)
+            self._gain_skill(dwarf, "harvest", 1)
+        elif job.kind == "forage":
+            self._spawn_item("raw_food", dwarf.x, dwarf.y, dwarf.z, material="wild-herb", perishability=105, value=1)
+            if self.rng.random() < 0.25:
+                self._spawn_item("raw_food", dwarf.x, dwarf.y, dwarf.z, material="wild-berry", perishability=95, value=1)
             self._gain_skill(dwarf, "harvest", 1)
         elif job.kind == "recover":
             dwarf.hp = clamp(dwarf.hp + 10, 0, 100)
@@ -189,6 +244,10 @@ class JobSystemsMixin(JobExecutionMixin):
             dwarf.needs["worship"] = clamp(dwarf.needs["worship"] - 30, 0, 100)
             dwarf.morale = clamp(dwarf.morale + 3, 0, 100)
             self.world.culture_points += 1
+        elif job.kind == "drink_water":
+            dwarf.needs["thirst"] = clamp(dwarf.needs["thirst"] - 60, 0, 100)
+            dwarf.morale = clamp(dwarf.morale + 2, 0, 100)
+            dwarf.stress = clamp(dwarf.stress - 2, 0, 100)
         elif job.kind == "wander":
             dwarf.morale = clamp(dwarf.morale + 1, 0, 100)
 

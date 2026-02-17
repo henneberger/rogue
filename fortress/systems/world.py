@@ -38,8 +38,11 @@ class WorldSystemsMixin:
                 self._log("animal", "A goat kid was born in the pasture.", 1)
 
     def _update_threats_and_factions(self) -> None:
+        if self.tick_count < 300:
+            return
         hostile = next((f for f in self.factions if f.stance == "hostile"), None)
-        if hostile and not self.world.raid_active and self.rng.random() < 0.01 + (self.world.wealth / 12000):
+        raid_chance = 0.0006 + (self.world.wealth / 120000)
+        if hostile and not self.world.raid_active and self.rng.random() < raid_chance:
             self.world.raid_active = True
             self.world.threat_level = self.rng.randint(1, 4)
             self._log("raid", f"Raid detected: threat level {self.world.threat_level}", 3)
@@ -54,13 +57,17 @@ class WorldSystemsMixin:
                 for f in self.factions:
                     if f.stance == "hostile":
                         f.reputation -= 2
-            elif self.rng.random() < 0.06:
+            elif self.rng.random() < 0.01:
                 victim = self.rng.choice(self.dwarves)
                 if victim.hp > 0:
                     victim.wounds.append("bruised")
                     victim.hp = max(5, victim.hp - self.rng.randint(4, 12))
                     victim.needs["safety"] = clamp(victim.needs["safety"] + 20, 0, 100)
                     self._log("combat", f"{victim.name} was injured during a skirmish.", 2)
+            elif self.rng.random() < 0.03:
+                self.world.raid_active = False
+                self.world.threat_level = 0
+                self._log("raid", "Raiders dispersed before a full assault.", 1)
 
     def _animal_tick(self) -> None:
         pasture = self._find_zone("pasture")
