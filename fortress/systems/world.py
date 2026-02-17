@@ -6,6 +6,84 @@ from fortress.models import Mandate, clamp
 
 
 class WorldSystemsMixin:
+    def _built_workshop(self, kind: str):
+        return next((w for w in self.workshops if w.kind == kind and w.built), None)
+
+    def _queue_workshop_recipe(self, workshop_kind: str, recipe: str, max_queue: int = 2) -> bool:
+        ws = self._built_workshop(workshop_kind)
+        if not ws:
+            return False
+        recipes = self.defs.get("recipes", {}).get(workshop_kind, {})
+        if recipe not in recipes:
+            return False
+        if ws.orders.get(recipe, 0) >= max_queue:
+            return False
+        ws.orders[recipe] = ws.orders.get(recipe, 0) + 1
+        return True
+
+    def _plan_workshop_orders(self) -> None:
+        if self.tick_count % 25 != 0:
+            return
+
+        # Core food and medicine chain.
+        if self._count_item_kind("raw_food") < 14 and self._count_item_kind("hide") > 0:
+            self._queue_workshop_recipe("butcher", "dress_carcass")
+        if self._count_item_kind("leather") < 4 and self._count_item_kind("hide") > 0:
+            self._queue_workshop_recipe("tanner", "cure_hide")
+        if self._count_item_kind("flour") < 5 and self._count_item_kind("raw_food") > 0:
+            self._queue_workshop_recipe("mill", "grind_flour")
+        if self._count_item_kind("raw_food") < 10 and self._count_item_kind("flour") > 0:
+            self._queue_workshop_recipe("quern", "make_gruel")
+        if self._count_item_kind("medicine") < 5 and self._count_item_kind("herb") > 0:
+            self._queue_workshop_recipe("apothecary", "compound_medicine")
+        if self._count_item_kind("bandage") < 5 and self._count_item_kind("fiber") > 0:
+            self._queue_workshop_recipe("doctor", "prepare_bandage")
+
+        # Metal and military chain.
+        if self._count_item_kind("metal_bar") < 5 and self._count_item_kind("ore") > 0 and self._count_item_kind("wood") > 0:
+            self._queue_workshop_recipe("furnace", "smelt_bar")
+        if self._count_item_kind("weapon") < 4 and self._count_item_kind("metal_bar") > 0:
+            self._queue_workshop_recipe("weaponsmith", "forge_weapon")
+        if self._count_item_kind("armor") < 4 and self._count_item_kind("metal_bar") > 0:
+            self._queue_workshop_recipe("armorsmith", "forge_armor")
+        if self._count_item_kind("tool") < 4 and self._count_item_kind("metal_bar") > 0:
+            self._queue_workshop_recipe("blacksmith", "forge_tool")
+        if self._count_item_kind("ammo") < 8 and self._count_item_kind("wood") > 0:
+            self._queue_workshop_recipe("fletcher", "make_bolts")
+        if self._count_item_kind("weapon") < 6 and self._count_item_kind("wood") > 0:
+            self._queue_workshop_recipe("bowyer", "make_bow")
+        if self._count_item_kind("siege_part") < 2 and self._count_item_kind("timber") > 0 and self._count_item_kind("wood") > 0:
+            self._queue_workshop_recipe("siege", "build_siege_part", max_queue=1)
+
+        # Industry and luxury.
+        if self._count_item_kind("mechanism") < 5 and self._count_item_kind("stone") > 0:
+            self._queue_workshop_recipe("mechanic", "make_mechanism")
+        if self._count_item_kind("ash") < 4 and self._count_item_kind("wood") > 0:
+            self._queue_workshop_recipe("ashery", "make_ash")
+        if self._count_item_kind("soap") < 3 and self._count_item_kind("ash") > 0 and self._count_item_kind("hide") > 0:
+            self._queue_workshop_recipe("soapmaker", "make_soap")
+        if self._count_item_kind("dye") < 4 and self._count_item_kind("herb") > 0:
+            self._queue_workshop_recipe("dyer", "make_dye")
+        if self._count_item_kind("pottery") < 4 and self._count_item_kind("stone") > 0:
+            self._queue_workshop_recipe("potter", "fire_pottery")
+        if self._count_item_kind("gem_cut") < 3 and self._count_item_kind("ore") > 0:
+            self._queue_workshop_recipe("jeweler", "cut_gem")
+        if self._count_item_kind("craft_good") < 16 and self._count_item_kind("gem_cut") > 0:
+            self._queue_workshop_recipe("jeweler", "set_jewel")
+
+        # Knowledge chain.
+        if self._count_item_kind("paper_sheet") < 4 and self._count_item_kind("fiber") > 0:
+            self._queue_workshop_recipe("paper", "press_paper")
+        if self._count_item_kind("manuscript") < 5 and self._count_item_kind("paper_sheet") > 0:
+            self._queue_workshop_recipe("scribe", "copy_text")
+
+        # Optional advanced food and farming pass.
+        if self._count_item_kind("cooked_food") < 8 and self._count_item_kind("raw_food") > 2 and self._count_item_kind("alcohol") > 0:
+            self._queue_workshop_recipe("kitchen_advanced", "preserves", max_queue=1)
+        if self._count_item_kind("seed") > 0:
+            self._queue_workshop_recipe("farmer", "thresh_crop", max_queue=1)
+
+
     def _update_world_time_weather(self) -> None:
         if self.tick_count % 20 == 0:
             self.world.day += 1

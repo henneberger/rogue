@@ -66,7 +66,7 @@ panel events
 - Multi-z-level world with weather, seasons, and raid pressure.
 - Dwarves with multi-need simulation (`hunger`, `thirst`, `sleep`, `social`, `worship`, `entertainment`, `safety`), stress, moods, skills, labor priorities, and allowed/forbidden labors.
 - Zones: `farm`, `recreation`, `temple`, `dormitory`, `hospital`, `pasture`, `burrow`.
-- Workshops: `kitchen`, `brewery`, `carpenter`, `mason`, `craftdwarf`, `smithy`, `loom`, `leatherworks` with recipe orders (including storage containers: `chest`, `barrel`, `bin`, `crate`, `bag`).
+- Workshops: `kitchen`, `kitchen_advanced`, `brewery`, `carpenter`, `mason`, `craftdwarf`, `smithy`, `loom`, `leatherworks`, `butcher`, `tanner`, `farmer`, `mill`, `quern`, `furnace`, `weaponsmith`, `armorsmith`, `blacksmith`, `jeweler`, `siege`, `mechanic`, `ashery`, `dyer`, `soapmaker`, `potter`, `bowyer`, `fletcher`, `paper`, `scribe`, `apothecary`, `doctor` with recipe orders.
 - Item/entity simulation with materials, quality, value, perishability, ownership/reservation/carried state.
 - Food sim v2: nutrition pressure, storage-sensitive spoilage, and alcohol dependency effects.
 - Stockpiles with typed acceptance and hauling jobs.

@@ -178,7 +178,7 @@ def help_text() -> str:
         "  stockpile <kind> <x> <y> <z> <w> <h>\n"
         "    kinds: raw cooked drink food materials goods medical furniture general\n"
         "  build workshop <kind> <x> <y> <z>\n"
-        "    kinds: kitchen brewery carpenter mason craftdwarf smithy loom leatherworks\n"
+        "    kinds: kitchen kitchen_advanced brewery carpenter mason craftdwarf smithy loom leatherworks butcher tanner farmer mill quern furnace weaponsmith armorsmith blacksmith jeweler siege mechanic ashery dyer soapmaker potter bowyer fletcher paper scribe apothecary doctor\n"
         "  order <workshop_id> <recipe> <amount>\n"
         "  dig <x> <y> <from_z> <to_z>\n"
         "  set need <dwarf_id> <need> <value>\n"

@@ -1,0 +1,15 @@
+=== Workshop Balance Verification (1000 ticks, full catalog) ===
+
+{'seed': 3, 'alive': '9/9', 'avg_stress': 19.9, 'avg_morale': 5.3, 'raw': 77, 'cooked': 0, 'drink': 0, 'wealth': 1603, 'mandates_fulfilled': 7, 'mandates_failed': 1, 'produced_key_coverage': '9/17', 'produced_total': 150}
+{'seed': 5, 'alive': '9/9', 'avg_stress': 8.1, 'avg_morale': 16.8, 'raw': 72, 'cooked': 0, 'drink': 0, 'wealth': 1636, 'mandates_fulfilled': 5, 'mandates_failed': 3, 'produced_key_coverage': '9/17', 'produced_total': 129}
+{'seed': 7, 'alive': '9/9', 'avg_stress': 0.8, 'avg_morale': 58.7, 'raw': 79, 'cooked': 0, 'drink': 0, 'wealth': 1611, 'mandates_fulfilled': 6, 'mandates_failed': 2, 'produced_key_coverage': '9/17', 'produced_total': 141}
+{'seed': 11, 'alive': '9/9', 'avg_stress': 8.4, 'avg_morale': 18.3, 'raw': 86, 'cooked': 0, 'drink': 0, 'wealth': 1662, 'mandates_fulfilled': 5, 'mandates_failed': 2, 'produced_key_coverage': '9/17', 'produced_total': 151}
+{'seed': 13, 'alive': '9/9', 'avg_stress': 10.8, 'avg_morale': 31.8, 'raw': 78, 'cooked': 0, 'drink': 0, 'wealth': 1649, 'mandates_fulfilled': 4, 'mandates_failed': 4, 'produced_key_coverage': '9/17', 'produced_total': 136}
+{'seed': 17, 'alive': '9/9', 'avg_stress': 13.4, 'avg_morale': 42, 'raw': 73, 'cooked': 0, 'drink': 0, 'wealth': 1564, 'mandates_fulfilled': 3, 'mandates_failed': 3, 'produced_key_coverage': '9/17', 'produced_total': 136}
+{'seed': 19, 'alive': '9/9', 'avg_stress': 12, 'avg_morale': 31.9, 'raw': 82, 'cooked': 0, 'drink': 0, 'wealth': 1646, 'mandates_fulfilled': 5, 'mandates_failed': 3, 'produced_key_coverage': '9/17', 'produced_total': 149}
+{'seed': 23, 'alive': '9/9', 'avg_stress': 13.3, 'avg_morale': 21.8, 'raw': 91, 'cooked': 0, 'drink': 0, 'wealth': 1814, 'mandates_fulfilled': 5, 'mandates_failed': 2, 'produced_key_coverage': '10/17', 'produced_total': 139}
+
+avg_coverage=9.12/17
+all_alive_runs=8/8
+avg_stress=10.84
+avg_morale=28.32

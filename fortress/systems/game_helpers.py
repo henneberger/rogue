@@ -76,8 +76,13 @@ class GameHelpersMixin:
             scored.append((dwarf.labor_priority.get(labor, 3), ws))
         if not scored:
             return None, None
-        scored.sort(key=lambda t: t[0], reverse=True)
-        for _, ws in scored:
+        scored.sort(key=lambda t: (t[0], -sum(t[1].orders.values())), reverse=True)
+        ordered = [ws for _, ws in scored]
+        if ordered:
+            start = self.workshop_dispatch_cursor % len(ordered)
+            ordered = ordered[start:] + ordered[:start]
+            self.workshop_dispatch_cursor = (self.workshop_dispatch_cursor + 1) % max(1, len(self.workshops))
+        for ws in ordered:
             recipe = next((r for r, c in ws.orders.items() if c > 0), None)
             if recipe:
                 ws.orders[recipe] -= 1

@@ -126,6 +126,9 @@ class JobExecutionMixin:
                     val = 1 + spec.get("value_bonus", 1) + quality
                     perish = 150 if output_kind in {"cooked_food", "raw_food", "alcohol"} else 0
                     self._spawn_item(output_kind, ws.x, ws.y, ws.z, quality=quality, value=val, perishability=perish)
+                    key = f"produced_{output_kind}"
+                    self.economy_stats[key] = self.economy_stats.get(key, 0) + 1
+                    self.economy_stats["produced_total"] = self.economy_stats.get("produced_total", 0) + 1
             self._gain_skill(dwarf, job.labor, 1)
             dwarf.needs["entertainment"] = clamp(dwarf.needs["entertainment"] - 4, 0, 100)
             dwarf.job = None

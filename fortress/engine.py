@@ -74,6 +74,7 @@ class Game(
     next_room_id: int = 1
     next_flora_id: int = 1
     next_mandate_id: int = 1
+    workshop_dispatch_cursor: int = 0
     max_flora: int = 80
     zones: List[Zone] = field(default_factory=list)
     stockpiles: List[Stockpile] = field(default_factory=list)
@@ -212,7 +213,39 @@ class Game(
         return sp
 
     def queue_build_workshop(self, kind: str, x: int, y: int, z: int) -> Workshop:
-        if kind not in {"kitchen", "brewery", "carpenter", "mason", "craftdwarf", "smithy", "loom", "leatherworks"}:
+        if kind not in {
+            "kitchen",
+            "brewery",
+            "carpenter",
+            "mason",
+            "craftdwarf",
+            "smithy",
+            "loom",
+            "leatherworks",
+            "butcher",
+            "tanner",
+            "farmer",
+            "mill",
+            "quern",
+            "kitchen_advanced",
+            "furnace",
+            "weaponsmith",
+            "armorsmith",
+            "blacksmith",
+            "jeweler",
+            "siege",
+            "mechanic",
+            "ashery",
+            "dyer",
+            "soapmaker",
+            "potter",
+            "bowyer",
+            "fletcher",
+            "paper",
+            "scribe",
+            "apothecary",
+            "doctor",
+        }:
             raise ValueError("unsupported workshop kind")
         self._validate_point(x, y, z)
         ws = Workshop(id=self.next_workshop_id, kind=kind, x=x, y=y, z=z)
@@ -258,6 +291,7 @@ class Game(
             self._item_tick()
             self._flora_tick()
             self._economy_tick()
+            self._plan_workshop_orders()
             self._sync_carried_items()
             self._refresh_rooms_and_assignments()
             self.world.wealth = sum(i.value + i.quality for i in self.items)

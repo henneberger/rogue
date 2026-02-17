@@ -348,13 +348,40 @@ def item_category(kind: str) -> str:
         return "cooked"
     if kind in {"alcohol"}:
         return "drink"
-    if kind in {"wood", "stone", "ore", "fiber", "hide", "timber"}:
+    if kind in {
+        "wood",
+        "stone",
+        "ore",
+        "fiber",
+        "hide",
+        "timber",
+        "leather",
+        "flour",
+        "metal_bar",
+        "mechanism",
+        "ash",
+        "dye",
+        "paper_sheet",
+    }:
         return "materials"
     if kind in {"barrel", "bin", "crate", "bag"}:
         return "materials"
     if kind in {"chest"}:
         return "furniture"
-    if kind in {"craft_good", "artifact", "manuscript", "performance_record"}:
+    if kind in {
+        "craft_good",
+        "artifact",
+        "manuscript",
+        "performance_record",
+        "weapon",
+        "armor",
+        "tool",
+        "gem_cut",
+        "siege_part",
+        "soap",
+        "pottery",
+        "ammo",
+    }:
         return "goods"
     if kind in {"bandage", "medicine"}:
         return "medical"

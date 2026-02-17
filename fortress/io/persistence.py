@@ -66,6 +66,7 @@ class PersistenceMixin:
                 "next_room_id": self.next_room_id,
                 "next_flora_id": self.next_flora_id,
                 "next_mandate_id": self.next_mandate_id,
+                "workshop_dispatch_cursor": self.workshop_dispatch_cursor,
             },
             "command_log": self.command_log,
             "economy_stats": self.economy_stats,
@@ -137,6 +138,7 @@ class PersistenceMixin:
         g.next_room_id = counters.get("next_room_id", 1)
         g.next_flora_id = counters.get("next_flora_id", 1)
         g.next_mandate_id = counters.get("next_mandate_id", 1)
+        g.workshop_dispatch_cursor = counters.get("workshop_dispatch_cursor", 0)
         g.command_log = data.get("command_log", [])
         g.economy_stats.update(data.get("economy_stats", {}))
         g.defs = data.get("defs", g.default_defs())
