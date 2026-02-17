@@ -14,6 +14,7 @@ from fortress.models import (
     Event,
     Faction,
     Flora,
+    GeologyDeposit,
     HistoricalEvent,
     Item,
     Job,
@@ -75,6 +76,7 @@ class Game(
     next_flora_id: int = 1
     next_mandate_id: int = 1
     workshop_dispatch_cursor: int = 0
+    debug_reveal_all_geology: bool = False
     max_flora: int = 80
     zones: List[Zone] = field(default_factory=list)
     stockpiles: List[Stockpile] = field(default_factory=list)
@@ -88,6 +90,10 @@ class Game(
     world_history: List[HistoricalEvent] = field(default_factory=list)
     rooms: List[Room] = field(default_factory=list)
     floras: List[Flora] = field(default_factory=list)
+    geology_deposits: List[GeologyDeposit] = field(default_factory=list)
+    geology_strata: Dict[int, str] = field(default_factory=dict)
+    geology_cavern_tiles: set = field(default_factory=set)
+    geology_breached_tiles: set = field(default_factory=set)
     mandates: List[Mandate] = field(default_factory=list)
     crimes: List[Crime] = field(default_factory=list)
     events: List[Event] = field(default_factory=list)
@@ -109,6 +115,8 @@ class Game(
             "mandate_wealth_earned": 0,
             "mandate_reputation_gained": 0,
             "mandate_reputation_lost": 0,
+            "geology_discoveries": 0,
+            "caverns_breached": 0,
         }
     )
     defs: Dict[str, Any] = field(default_factory=dict)
@@ -117,6 +125,7 @@ class Game(
         self.rng = random.Random(self.rng_seed)
         self.defs = self.default_defs()
         self._generate_world()
+        self._generate_geology()
         if not self.dwarves:
             self.add_dwarf("Urist", 2, 2, 0)
             self.add_dwarf("Domas", 4, 2, 0)

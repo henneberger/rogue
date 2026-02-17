@@ -77,12 +77,14 @@ panel events
 - Culture/scholarship points and occasional artifact creation.
 - Room detection/valuation and dwarf room assignment with quality effects.
 - Biome-aware flora simulation with real species (scientific names), growth stages, stress, dormancy, and spreading.
+- Subterranean geology with strata, deterministic ore/gem deposits, cavern regions, and mining discovery events.
 - Save/load, replay export, scripted command execution, data-definition loading (`load_defs`).
 
 ## REPL Commands
 
 - `help`
 - `render [z]`
+- `render geology [z]`
 - `status`
 - `tick [n]`
 - `z <level>`
@@ -102,8 +104,10 @@ panel events
 - `squad add <squad_id> <dwarf_id>`
 - `faction stance <faction_id> <allied|neutral|hostile>`
 - `alert <peace|raid>`
-- `panel <world|worldgen|flora|rooms|dwarves|jobs|stocks|events|factions|squads|justice|culture>`
+- `panel <world|worldgen|flora|geology|rooms|dwarves|jobs|stocks|events|factions|squads|justice|culture>`
+- `reveal geology [off]`
 - `flora at <x> <y> <z>`
+- `prospect <x> <y> <z>`
 - `items`
 - `alerts`
 - `save <path>` / `load <path>`

@@ -1,0 +1,28 @@
+=== ISSUE 23 GEOLOGY SIM (seed=223) ===
+
+--- PANEL GEOLOGY ---
+Geology:
+  strata=z0:sedimentary-shale, z1:metamorphic-schist, z2:igneous-basalt
+  deposits_total=42 discovered=2 remaining=41
+  caverns_tiles=45 breached=2
+  extracted_ore=cassiterite:2, hematite:2
+  extracted_gem=none
+  depth_activity=z2:4
+  known_deposits:
+    [1] ore hematite rarity=common at (8,9,2) rem=1/3
+    [21] ore cassiterite rarity=rare at (8,8,2) rem=0/2
+
+--- PROSPECT TARGETS ---
+prospect (8,9,2): known traces of hematite (ore, common)
+prospect (4,8,2): hollow resonance detected (cavern)
+
+--- GEOLOGY EVENTS ---
+t6 [geology] sev=2 Discovered cassiterite ore deposit (rare) at (8,8,2).
+t6 [geology] sev=3 Cavern breach at (8,8,2)! Strange echoes from below...
+t6 [geology] sev=1 cassiterite deposit at (8,8,2) is depleted.
+t6 [geology] sev=2 Discovered hematite ore deposit (common) at (8,9,2).
+t12 [geology] sev=3 Cavern breach at (4,8,2)! Strange echoes from below...
+
+--- PANEL STOCKS (ore/gem focus) ---
+ore: total=5 loose=5 contained=0
+stone: total=2 loose=2 contained=0

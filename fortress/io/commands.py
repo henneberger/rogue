@@ -19,6 +19,10 @@ class CommandMixin:
         if cmd == "help":
             return help_text()
         if cmd == "render":
+            if len(parts) >= 2 and parts[1] == "geology":
+                if len(parts) == 3:
+                    return self.render_geology(int(parts[2]))
+                return self.render_geology()
             if len(parts) == 2:
                 return self.render(int(parts[1]))
             return self.render()
@@ -127,8 +131,16 @@ class CommandMixin:
             return f"alert set to {parts[1]}"
         if cmd == "panel" and len(parts) == 2:
             return self.panel(parts[1])
+        if cmd == "reveal" and len(parts) >= 2 and parts[1] == "geology":
+            if len(parts) >= 3 and parts[2].lower() in {"off", "0", "false"}:
+                self.debug_reveal_all_geology = False
+            else:
+                self.debug_reveal_all_geology = True
+            return f"geology reveal_all={self.debug_reveal_all_geology}"
         if cmd == "flora" and len(parts) == 5 and parts[1] == "at":
             return self.flora_at(int(parts[2]), int(parts[3]), int(parts[4]))
+        if cmd == "prospect" and len(parts) == 4:
+            return self.prospect(int(parts[1]), int(parts[2]), int(parts[3]))
         if cmd == "items":
             return self.items_dump()
         if cmd == "alerts":
@@ -168,6 +180,7 @@ def help_text() -> str:
         "Commands:\n"
         "  help\n"
         "  render [z]\n"
+        "  render geology [z]\n"
         "  status\n"
         "  tick [n]\n"
         "  z <level>\n"
@@ -190,8 +203,10 @@ def help_text() -> str:
         "  squad add <squad_id> <dwarf_id>\n"
         "  faction stance <faction_id> <allied|neutral|hostile>\n"
         "  alert <peace|raid>\n"
-        "  panel <world|worldgen|flora|rooms|dwarves|jobs|stocks|events|factions|squads|justice|culture>\n"
+        "  panel <world|worldgen|flora|geology|rooms|dwarves|jobs|stocks|events|factions|squads|justice|culture>\n"
+        "  reveal geology [off]\n"
         "  flora at <x> <y> <z>\n"
+        "  prospect <x> <y> <z>\n"
         "  items\n"
         "  alerts\n"
         "  save <path> | load <path>\n"

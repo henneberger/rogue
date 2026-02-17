@@ -103,5 +103,15 @@ class DefsMixin:
             },
             "creatures": {"goat": {"graze": 1}, "boar": {"graze": 1}},
             "materials": ["oak", "granite", "hematite", "pig-tail", "goat-hide", "plump-helmet"],
+            "geology_ores": {
+                "hematite": {"rarity": "common", "value": 4, "min_depth": 1, "max_depth": 2},
+                "magnetite": {"rarity": "uncommon", "value": 5, "min_depth": 1, "max_depth": 2},
+                "cassiterite": {"rarity": "rare", "value": 7, "min_depth": 2, "max_depth": 2},
+            },
+            "geology_gems": {
+                "quartz": {"rarity": "common", "value": 8, "min_depth": 1, "max_depth": 2},
+                "garnet": {"rarity": "uncommon", "value": 10, "min_depth": 2, "max_depth": 2},
+                "emerald": {"rarity": "rare", "value": 14, "min_depth": 2, "max_depth": 2},
+            },
             "flora_species": FLORA_SPECIES,
         }

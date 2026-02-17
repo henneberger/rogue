@@ -11,6 +11,7 @@ from fortress.models import (
     Event,
     Faction,
     Flora,
+    GeologyDeposit,
     HistoricalEvent,
     Item,
     Job,
@@ -28,7 +29,12 @@ from fortress.models import (
 class PersistenceMixin:
     def save_json(self, path: str) -> None:
         payload = {
-            "meta": {"rng_seed": self.rng_seed, "tick": self.tick_count, "selected_z": self.selected_z},
+            "meta": {
+                "rng_seed": self.rng_seed,
+                "tick": self.tick_count,
+                "selected_z": self.selected_z,
+                "debug_reveal_all_geology": self.debug_reveal_all_geology,
+            },
             "world": asdict(self.world),
             "zones": [asdict(z) for z in self.zones],
             "stockpiles": [asdict(s) for s in self.stockpiles],
@@ -48,6 +54,12 @@ class PersistenceMixin:
             "world_history": [asdict(h) for h in self.world_history],
             "rooms": [asdict(r) for r in self.rooms],
             "floras": [asdict(fl) for fl in self.floras],
+            "geology": {
+                "strata": self.geology_strata,
+                "deposits": [asdict(dep) for dep in self.geology_deposits],
+                "cavern_tiles": [list(t) for t in sorted(self.geology_cavern_tiles)],
+                "breached_tiles": [list(t) for t in sorted(self.geology_breached_tiles)],
+            },
             "mandates": [asdict(m) for m in self.mandates],
             "crimes": [asdict(c) for c in self.crimes],
             "events": [asdict(e) for e in self.events],
@@ -82,6 +94,7 @@ class PersistenceMixin:
         g = cls(rng_seed=data["meta"]["rng_seed"])
         g.tick_count = data["meta"]["tick"]
         g.selected_z = data["meta"].get("selected_z", 0)
+        g.debug_reveal_all_geology = data["meta"].get("debug_reveal_all_geology", False)
         g.world = WorldState(**data["world"])
         g.zones = [Zone(**z) for z in data["zones"]]
         g.stockpiles = [Stockpile(**s) for s in data["stockpiles"]]
@@ -120,6 +133,13 @@ class PersistenceMixin:
         g.world_history = [HistoricalEvent(**h) for h in data.get("world_history", [])]
         g.rooms = [Room(**r) for r in data.get("rooms", [])]
         g.floras = [Flora(**fl) for fl in data.get("floras", [])]
+        geology = data.get("geology", {})
+        g.geology_strata = {int(k): v for k, v in geology.get("strata", {}).items()}
+        g.geology_deposits = [GeologyDeposit(**dep) for dep in geology.get("deposits", [])]
+        g.geology_cavern_tiles = {tuple(t) for t in geology.get("cavern_tiles", [])}
+        g.geology_breached_tiles = {tuple(t) for t in geology.get("breached_tiles", [])}
+        if not g.geology_strata:
+            g._generate_geology()
         g.mandates = [Mandate(**m) for m in data.get("mandates", [])]
         g.crimes = [Crime(**c) for c in data["crimes"]]
         g.events = [Event(**e) for e in data["events"]]
