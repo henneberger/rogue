@@ -176,7 +176,7 @@ def help_text() -> str:
         "  zone <kind> <x> <y> <z> <w> <h>\n"
         "    kinds: farm recreation temple dormitory hospital pasture burrow\n"
         "  stockpile <kind> <x> <y> <z> <w> <h>\n"
-        "    kinds: raw cooked drink materials goods medical furniture general\n"
+        "    kinds: raw cooked drink food materials goods medical furniture general\n"
         "  build workshop <kind> <x> <y> <z>\n"
         "    kinds: kitchen brewery carpenter mason craftdwarf smithy loom leatherworks\n"
         "  order <workshop_id> <recipe> <amount>\n"

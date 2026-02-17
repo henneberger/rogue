@@ -194,10 +194,20 @@ class JobSystemsMixin(JobExecutionMixin):
 
         # Hauling.
         if self._labor_allowed(dwarf, "haul"):
-            item, stock = self._find_haul_candidate()
+            item, stock, container = self._find_haul_candidate()
             if item and stock:
                 item.reserved_by = dwarf.id
-                return self._new_job(kind="haul", labor="haul", item_id=item.id, target_id=stock.id, destination=self._item_pos(item), phase="to_item")
+                if container:
+                    container.reserved_by = dwarf.id
+                return self._new_job(
+                    kind="haul",
+                    labor="haul",
+                    item_id=item.id,
+                    target_id=stock.id,
+                    container_id=container.id if container else None,
+                    destination=self._item_pos(item),
+                    phase="to_item",
+                )
 
         # Recreation, social, worship.
         if dwarf.needs["entertainment"] >= 60 and self._find_zone("recreation", dwarf.z):

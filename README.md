@@ -28,7 +28,7 @@ python3 /Users/henneberger/game2/game.py
 ## Test
 
 ```bash
-python3 -m unittest -v tests/test_economy_issue29.py
+python3 -m unittest -v tests/test_economy_issue29.py tests/test_balance_pass.py tests/test_container_storage_issue33.py
 ```
 
 ## Quick Start
@@ -43,14 +43,19 @@ zone pasture 24 10 0 5 4
 stockpile raw 8 8 0 4 3
 stockpile cooked 13 8 0 4 3
 stockpile drink 18 8 0 4 3
+stockpile food 23 8 0 4 3
 stockpile materials 1 12 0 8 3
 build workshop kitchen 11 7 0
 build workshop brewery 16 7 0
 build workshop carpenter 21 7 0
+build workshop loom 24 7 0
 tick 20
 order 1 meal 4
 order 2 brew 3
 order 3 bed 2
+order 3 barrel 2
+order 3 chest 1
+order 4 bag 2
 tick 25
 status
 panel events
@@ -61,10 +66,11 @@ panel events
 - Multi-z-level world with weather, seasons, and raid pressure.
 - Dwarves with multi-need simulation (`hunger`, `thirst`, `sleep`, `social`, `worship`, `entertainment`, `safety`), stress, moods, skills, labor priorities, and allowed/forbidden labors.
 - Zones: `farm`, `recreation`, `temple`, `dormitory`, `hospital`, `pasture`, `burrow`.
-- Workshops: `kitchen`, `brewery`, `carpenter`, `mason`, `craftdwarf`, `smithy`, `loom`, `leatherworks` with recipe orders.
+- Workshops: `kitchen`, `brewery`, `carpenter`, `mason`, `craftdwarf`, `smithy`, `loom`, `leatherworks` with recipe orders (including storage containers: `chest`, `barrel`, `bin`, `crate`, `bag`).
 - Item/entity simulation with materials, quality, value, perishability, ownership/reservation/carried state.
 - Food sim v2: nutrition pressure, storage-sensitive spoilage, and alcohol dependency effects.
 - Stockpiles with typed acceptance and hauling jobs.
+- Containerized storage where haulers can pack accepted items into `chest`, `barrel`, `bin`, `crate`, and `bag` based on stockpile type.
 - Social memory and relationship updates.
 - Justice events and crime records.
 - Squads, raid alerts, basic defense/training loop, injury/recovery.

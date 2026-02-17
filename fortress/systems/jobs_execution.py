@@ -7,6 +7,7 @@ class JobExecutionMixin:
     def _perform_haul_step(self, dwarf: Dwarf, job: Job) -> None:
         item = self._find_item_by_id(job.item_id)
         stock = self._find_stockpile(job.target_id)
+        container = self._find_item_by_id(job.container_id)
         dwarf.state = "haul"
         if not item or not stock:
             self._release_job_item(dwarf, job)
@@ -20,23 +21,48 @@ class JobExecutionMixin:
             if dwarf.pos == self._item_pos(item):
                 item.carried_by = dwarf.id
                 item.stockpile_id = None
+                item.container_id = None
                 job.phase = "to_stockpile"
-                job.destination = self._choose_stockpile_drop_tile(stock)
+                if container:
+                    job.destination = self._item_pos(container)
+                else:
+                    job.destination = self._choose_stockpile_drop_tile(stock)
             return
 
         if job.phase == "to_stockpile":
+            # Container may have become invalid while hauling; retry fallback.
+            if container:
+                if (
+                    container.stockpile_id != stock.id
+                    or not self._container_accepts_item(container.kind, item.kind, stock.kind)
+                    or self._container_free_capacity(container) <= 0
+                ):
+                    container.reserved_by = None
+                    job.container_id = None
+                    container = None
+                    job.destination = self._choose_stockpile_drop_tile(stock)
             if self._stockpile_free_slots(stock) <= 0:
-                item.carried_by = None
-                item.reserved_by = None
-                item.x, item.y, item.z = dwarf.x, dwarf.y, dwarf.z
-                dwarf.job = None
-                dwarf.state = "idle"
-                return
+                if not container:
+                    item.carried_by = None
+                    item.reserved_by = None
+                    item.x, item.y, item.z = dwarf.x, dwarf.y, dwarf.z
+                    dwarf.job = None
+                    dwarf.state = "idle"
+                    return
             self._step_move_toward(dwarf, job.destination)
             if dwarf.pos == job.destination:
                 item.carried_by = None
                 item.reserved_by = None
-                item.x, item.y, item.z = dwarf.x, dwarf.y, dwarf.z
+                if container and self._container_free_capacity(container) > 0:
+                    item.x, item.y, item.z = container.x, container.y, container.z
+                    item.container_id = container.id
+                    item.stockpile_id = stock.id
+                    container.reserved_by = None
+                else:
+                    item.x, item.y, item.z = dwarf.x, dwarf.y, dwarf.z
+                    item.container_id = None
+                    if container:
+                        container.reserved_by = None
                 item.stockpile_id = stock.id
                 self._gain_skill(dwarf, "haul", 1)
                 dwarf.job = None
@@ -66,6 +92,7 @@ class JobExecutionMixin:
             if dwarf.pos == self._item_pos(primary):
                 primary.carried_by = dwarf.id
                 primary.stockpile_id = None
+                primary.container_id = None
                 job.phase = "to_workshop"
                 job.destination = ws.pos
             return
@@ -119,6 +146,7 @@ class JobExecutionMixin:
                 if dwarf.pos == self._item_pos(item):
                     item.carried_by = dwarf.id
                     item.stockpile_id = None
+                    item.container_id = None
                     job.phase = "using"
                     job.remaining = 2
                 return
@@ -174,4 +202,6 @@ class JobExecutionMixin:
             if item.carried_by == dwarf.id:
                 item.carried_by = None
                 item.x, item.y, item.z = dwarf.pos
-
+        container = self._find_item_by_id(job.container_id)
+        if container and container.reserved_by == dwarf.id:
+            container.reserved_by = None

@@ -115,6 +115,23 @@ class WorldSystemsMixin:
     def _economy_tick(self) -> None:
         if self.tick_count % 40 == 0:
             self.economy_stats["trees_felled_recent"] = max(0, self.economy_stats.get("trees_felled_recent", 0) - 1)
+        if self.tick_count % 30 == 0:
+            for sp in self.stockpiles:
+                if self._stockpile_loose_item_count(sp) < 4:
+                    continue
+                loose = next(
+                    (
+                        i
+                        for i in self.items
+                        if i.stockpile_id == sp.id and i.container_id is None and i.kind not in {"chest", "barrel", "bin", "crate", "bag"}
+                    ),
+                    None,
+                )
+                if not loose:
+                    continue
+                if self._find_compatible_container(sp, loose.kind):
+                    continue
+                self._request_container_for_stockpile(sp, loose.kind)
 
         active = [m for m in self.mandates if not m.fulfilled and not m.failed]
         if len(active) < 2 and self.tick_count % 120 == 0:
