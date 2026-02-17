@@ -1,8 +1,22 @@
 from __future__ import annotations
 
-from typing import Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 
-from fortress.models import Coord3, Dwarf, Event, Faction, Flora, Item, Squad, Stockpile, Workshop, Zone, clamp
+from fortress.models import (
+    CONTAINER_CAPACITY,
+    Coord3,
+    Dwarf,
+    Event,
+    Faction,
+    Flora,
+    Item,
+    Squad,
+    Stockpile,
+    Workshop,
+    Zone,
+    clamp,
+    is_container_kind,
+)
 
 
 class GameHelpersMixin:
@@ -70,25 +84,140 @@ class GameHelpersMixin:
                 return ws, recipe
         return None, None
 
-    def _find_haul_candidate(self) -> Tuple[Optional[Item], Optional[Stockpile]]:
+    def _find_haul_candidate(self) -> Tuple[Optional[Item], Optional[Stockpile], Optional[Item]]:
         for item in self.items:
             if item.reserved_by is not None or item.carried_by is not None:
                 continue
             if item.stockpile_id is not None:
                 continue
-            stock = self._find_stockpile_for_item(item)
+            if item.container_id is not None:
+                continue
+            stock, container = self._find_stockpile_for_item(item)
             if stock:
-                return item, stock
+                return item, stock, container
+        return None, None, None
+
+    def _find_stockpile_for_item(self, item: Item) -> Tuple[Optional[Stockpile], Optional[Item]]:
+        if is_container_kind(item.kind):
+            stock_targets = [
+                sp
+                for sp in self.stockpiles
+                if sp.z == item.z and item.kind in self._stockpile_container_policy(sp.kind) and self._stockpile_free_slots(sp) > 0
+            ]
+            if stock_targets:
+                stock_targets.sort(key=lambda sp: self._stockpile_used_slots(sp))
+                return stock_targets[0], None
+        best: Optional[Tuple[int, Stockpile, Optional[Item]]] = None
+        for sp in self.stockpiles:
+            if not sp.accepts(item.kind) or sp.z != item.z:
+                continue
+            container = self._find_compatible_container(sp, item.kind)
+            if container:
+                load = self._container_load(container)
+                if best is None or load < best[0]:
+                    best = (load, sp, container)
+                continue
+            if self._stockpile_free_slots(sp) > 0:
+                load = self._stockpile_used_slots(sp)
+                if best is None or load < best[0]:
+                    best = (load, sp, None)
+                continue
+            self._request_container_for_stockpile(sp, item.kind)
+        if best:
+            return best[1], best[2]
         return None, None
 
-    def _find_stockpile_for_item(self, item: Item) -> Optional[Stockpile]:
-        for sp in self.stockpiles:
-            if sp.accepts(item.kind) and self._stockpile_free_slots(sp) > 0 and sp.z == item.z:
-                return sp
-        return None
+    def _stockpile_container_policy(self, stockpile_kind: str) -> List[str]:
+        policy: Dict[str, List[str]] = {
+            "raw": ["bag", "barrel"],
+            "cooked": ["barrel"],
+            "drink": ["barrel"],
+            "food": ["barrel", "bag"],
+            "materials": ["bin", "crate", "bag"],
+            "goods": ["bin", "chest", "crate"],
+            "furniture": ["crate", "chest"],
+            "medical": ["bag", "barrel", "bin"],
+            "general": ["crate", "bin", "barrel", "bag", "chest"],
+        }
+        return policy.get(stockpile_kind, [])
+
+    def _container_accepts_item(self, container_kind: str, item_kind: str, stockpile_kind: str) -> bool:
+        if container_kind not in self._stockpile_container_policy(stockpile_kind):
+            return False
+        if item_kind in {"chest", "barrel", "bin", "crate", "bag"}:
+            return False
+        if container_kind == "bag":
+            return item_kind in {"seed", "herb", "berry", "raw_food", "fiber", "medicine", "rare_plant"}
+        if container_kind == "barrel":
+            return item_kind in {"raw_food", "cooked_food", "alcohol", "herb", "berry", "medicine"}
+        if container_kind == "bin":
+            return item_kind in {"craft_good", "artifact", "manuscript", "performance_record", "fiber", "hide", "ore", "stone", "timber", "wood"}
+        if container_kind == "crate":
+            return item_kind not in {"alcohol"}
+        if container_kind == "chest":
+            return item_kind in {"craft_good", "artifact", "manuscript", "performance_record", "bed", "chair", "table"}
+        return False
+
+    def _container_load(self, container: Item) -> int:
+        return sum(1 for i in self.items if i.container_id == container.id)
+
+    def _container_free_capacity(self, container: Item) -> int:
+        cap = CONTAINER_CAPACITY.get(container.kind, 0)
+        return max(0, cap - self._container_load(container))
+
+    def _find_compatible_container(self, stockpile: Stockpile, item_kind: str) -> Optional[Item]:
+        candidates: List[Item] = []
+        for item in self.items:
+            if item.stockpile_id != stockpile.id or item.container_id is not None:
+                continue
+            if not is_container_kind(item.kind):
+                continue
+            if item.reserved_by is not None:
+                continue
+            if not self._container_accepts_item(item.kind, item_kind, stockpile.kind):
+                continue
+            if self._container_free_capacity(item) <= 0:
+                continue
+            candidates.append(item)
+        if not candidates:
+            return None
+        candidates.sort(key=lambda c: (self._container_load(c), c.id))
+        return candidates[0]
+
+    def _request_container_for_stockpile(self, stockpile: Stockpile, item_kind: str) -> None:
+        if self.tick_count % 20 != 0:
+            return
+        container_order = {
+            "raw": ("carpenter", "barrel"),
+            "cooked": ("carpenter", "barrel"),
+            "drink": ("carpenter", "barrel"),
+            "food": ("carpenter", "barrel"),
+            "materials": ("carpenter", "bin"),
+            "goods": ("carpenter", "chest"),
+            "furniture": ("carpenter", "crate"),
+            "medical": ("loom", "bag"),
+            "general": ("carpenter", "crate"),
+        }.get(stockpile.kind)
+        if not container_order:
+            return
+        ws_kind, recipe = container_order
+        ws = next((w for w in self.workshops if w.kind == ws_kind and w.built and w.z == stockpile.z), None)
+        if not ws:
+            return
+        if ws.orders.get(recipe, 0) >= 2:
+            return
+        ws.orders[recipe] = ws.orders.get(recipe, 0) + 1
+        self._log("logistics", f"Queued {recipe} for stockpile #{stockpile.id} ({stockpile.kind}).", 1)
+
+    def _stockpile_loose_item_count(self, stockpile: Stockpile) -> int:
+        return sum(
+            1
+            for i in self.items
+            if i.stockpile_id == stockpile.id and i.container_id is None and not is_container_kind(i.kind)
+        )
 
     def _stockpile_used_slots(self, stockpile: Stockpile) -> int:
-        return sum(1 for i in self.items if i.stockpile_id == stockpile.id)
+        return sum(1 for i in self.items if i.stockpile_id == stockpile.id and i.container_id is None)
 
     def _stockpile_free_slots(self, stockpile: Stockpile) -> int:
         return stockpile.capacity - self._stockpile_used_slots(stockpile)
@@ -101,7 +230,7 @@ class GameHelpersMixin:
                 load = sum(
                     1
                     for i in self.items
-                    if i.stockpile_id == stockpile.id and i.x == xx and i.y == yy and i.z == stockpile.z
+                    if i.stockpile_id == stockpile.id and i.container_id is None and i.x == xx and i.y == yy and i.z == stockpile.z
                 )
                 if load < best_load:
                     best_load = load
@@ -157,7 +286,10 @@ class GameHelpersMixin:
         return it
 
     def _consume_item(self, item_id: int) -> None:
-        self.items = [i for i in self.items if i.id != item_id]
+        remove_ids = {item_id}
+        contained = {i.id for i in self.items if i.container_id == item_id}
+        remove_ids |= contained
+        self.items = [i for i in self.items if i.id not in remove_ids]
 
     def _sync_carried_items(self) -> None:
         for i in self.items:
@@ -198,6 +330,10 @@ class GameHelpersMixin:
         if sp:
             if sp.kind in {"raw", "cooked", "drink"}:
                 effective = int(effective * 1.7)
+                if item.container_id is not None:
+                    container = self._find_item_by_id(item.container_id)
+                    if container and container.kind == "barrel":
+                        effective = int(effective * 1.25)
             elif sp.kind == "general":
                 effective = int(effective * 1.25)
             else:

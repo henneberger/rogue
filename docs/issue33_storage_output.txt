@@ -1,0 +1,66 @@
+=== ISSUE 33 CONTAINER PACKING VISUAL (seed=140) ===
+--- PANEL STOCKS ---
+bag: total=1 loose=1 contained=0
+barrel: total=1 loose=1 contained=0
+berry: total=1 loose=1 contained=0
+bin: total=2 loose=2 contained=0
+craft_good: total=4 loose=0 contained=4
+fiber: total=1 loose=0 contained=1
+herb: total=5 loose=2 contained=3
+hide: total=6 loose=6 contained=0
+manuscript: total=1 loose=0 contained=1
+rare_plant: total=1 loose=0 contained=1
+seed: total=4 loose=0 contained=4
+timber: total=4 loose=0 contained=4
+Containers:
+  [11] bag stockpile=1 load=8 mat=cloth
+  [12] barrel stockpile=2 load=0 mat=oak
+  [13] bin stockpile=3 load=5 mat=oak
+  [14] bin stockpile=4 load=5 mat=oak
+
+--- ITEMS (containers) ---
+[11] bag (5,5,0) mat=cloth q=0 v=3 age=180/0 stock=1 container=None carried=None reserved=None
+[12] barrel (7,5,0) mat=oak q=0 v=3 age=180/0 stock=2 container=None carried=None reserved=None
+[13] bin (9,5,0) mat=oak q=0 v=3 age=180/0 stock=3 container=None carried=None reserved=None
+[14] bin (11,5,0) mat=oak q=0 v=3 age=180/0 stock=4 container=None carried=None reserved=1
+
+--- ITEMS (contained) ---
+[15] seed (5,5,0) mat=spawn q=0 v=1 age=180/0 stock=1 container=11 carried=None reserved=None
+[16] seed (5,5,0) mat=spawn q=0 v=1 age=180/0 stock=1 container=11 carried=None reserved=None
+[17] seed (5,5,0) mat=spawn q=0 v=1 age=180/0 stock=1 container=11 carried=None reserved=None
+[18] seed (5,5,0) mat=spawn q=0 v=1 age=180/0 stock=1 container=11 carried=None reserved=None
+[23] craft_good (9,5,0) mat=stone q=0 v=3 age=180/0 stock=3 container=13 carried=None reserved=None
+[24] craft_good (9,5,0) mat=stone q=0 v=3 age=180/0 stock=3 container=13 carried=None reserved=None
+[25] craft_good (9,5,0) mat=stone q=0 v=3 age=180/0 stock=3 container=13 carried=None reserved=None
+[26] craft_good (9,5,0) mat=stone q=0 v=3 age=180/0 stock=3 container=13 carried=None reserved=None
+[27] timber (11,5,0) mat=oak q=0 v=3 age=180/0 stock=4 container=14 carried=None reserved=None
+[28] timber (11,5,0) mat=oak q=0 v=3 age=180/0 stock=4 container=14 carried=None reserved=None
+[29] timber (11,5,0) mat=oak q=0 v=3 age=180/0 stock=4 container=14 carried=None reserved=None
+[30] timber (11,5,0) mat=oak q=0 v=3 age=180/0 stock=4 container=14 carried=None reserved=None
+[33] herb (5,5,0) mat=typha-latifolia-forage q=0 v=2 age=162/110 stock=1 container=11 carried=None reserved=None
+[35] fiber (11,5,0) mat=sphagnum-spp.-fiber q=0 v=2 age=160/0 stock=4 container=14 carried=None reserved=None
+[37] herb (5,5,0) mat=allium-canadense-herb q=0 v=2 age=124/120 stock=1 container=11 carried=None reserved=None
+[39] rare_plant (5,5,0) mat=allium-canadense-rare-cutting q=0 v=5 age=124/150 stock=1 container=11 carried=None reserved=None
+[44] herb (5,5,0) mat=allium-canadense-herb q=0 v=2 age=83/120 stock=1 container=11 carried=None reserved=None
+[46] manuscript (9,5,0) mat=generic q=1 v=8 age=60/0 stock=3 container=13 carried=None reserved=None
+
+--- RENDER ---
+Tick 180 | z=0 | day=10 spring | weather=storm temp=9C
+food raw=0 cooked=0 drink=0 flora=35 wealth=80 raid=False
+Legend: D dwarf, a animal, workshops (lower=construction upper=built), f/r/t/d/h/p/b zones, stockpiles s c q k m g u + S, flora , ; " * + t y T Y A x, items R C A W O E F H B * L h b r M P X U N Q G
+.................x..............
+.H..............................
+.........x......................
+......H.D.......................
+................................
+.H...h.U+M+F....................
+........;.*...................x.
+.........;bD....................
+..H..............x..............
+...H....D+.......x..........+...
+.....a....+.....................
+.........*.+....................
+.........,"+x...+....x..........
+.h+..............;..............
+"+..............................
+,.........."+...................

@@ -24,6 +24,14 @@ LABORS = {
     "sleep",
 }
 
+CONTAINER_CAPACITY: Dict[str, int] = {
+    "chest": 8,
+    "barrel": 12,
+    "bin": 14,
+    "crate": 16,
+    "bag": 8,
+}
+
 
 def clamp(v: int, lo: int, hi: int) -> int:
     return max(lo, min(hi, v))
@@ -71,6 +79,8 @@ class Stockpile:
         cat = item_category(item_kind)
         if self.kind == "general":
             return True
+        if self.kind == "food":
+            return cat in {"raw", "cooked", "drink"}
         return self.kind == cat
 
     @property
@@ -109,6 +119,7 @@ class Item:
     stockpile_id: Optional[int] = None
     carried_by: Optional[int] = None
     reserved_by: Optional[int] = None
+    container_id: Optional[int] = None
 
 
 @dataclass
@@ -122,6 +133,7 @@ class Job:
     destination: Optional[Coord3] = None
     remaining: int = 1
     phase: str = ""
+    container_id: Optional[int] = None
 
 
 @dataclass
@@ -331,13 +343,17 @@ def item_category(kind: str) -> str:
     if kind in {"raw_food", "herb", "berry", "rare_plant"}:
         return "raw"
     if kind in {"seed"}:
-        return "materials"
+        return "raw"
     if kind in {"cooked_food"}:
         return "cooked"
     if kind in {"alcohol"}:
         return "drink"
     if kind in {"wood", "stone", "ore", "fiber", "hide", "timber"}:
         return "materials"
+    if kind in {"barrel", "bin", "crate", "bag"}:
+        return "materials"
+    if kind in {"chest"}:
+        return "furniture"
     if kind in {"craft_good", "artifact", "manuscript", "performance_record"}:
         return "goods"
     if kind in {"bandage", "medicine"}:
@@ -345,3 +361,7 @@ def item_category(kind: str) -> str:
     if kind in {"bed", "chair", "table"}:
         return "furniture"
     return "general"
+
+
+def is_container_kind(kind: str) -> bool:
+    return kind in CONTAINER_CAPACITY

@@ -203,7 +203,7 @@ class Game(
         return zt
 
     def add_stockpile(self, kind: str, x: int, y: int, z: int, w: int, h: int) -> Stockpile:
-        if kind not in {"raw", "cooked", "drink", "materials", "goods", "medical", "furniture", "general"}:
+        if kind not in {"raw", "cooked", "drink", "food", "materials", "goods", "medical", "furniture", "general"}:
             raise ValueError("unknown stockpile kind")
         self._validate_rect(x, y, z, w, h)
         sp = Stockpile(id=self.next_stockpile_id, kind=kind, x=x, y=y, z=z, w=w, h=h)

@@ -32,6 +32,7 @@ class RenderMixin:
                 "raw": "s",
                 "cooked": "c",
                 "drink": "q",
+                "food": "k",
                 "materials": "m",
                 "goods": "g",
                 "furniture": "u",
@@ -76,6 +77,11 @@ class RenderMixin:
                 "rare_plant": "r",
                 "manuscript": "M",
                 "performance_record": "P",
+                "chest": "X",
+                "barrel": "U",
+                "bin": "N",
+                "crate": "Q",
+                "bag": "G",
             }.get(item.kind, "i")
             grid[iy][ix] = ch
 
@@ -90,7 +96,7 @@ class RenderMixin:
         lines = [
             f"Tick {self.tick_count} | z={z} | day={self.world.day} {self.world.season} | weather={self.world.weather} temp={self.world.temperature_c}C",
             f"food raw={self.raw_food} cooked={self.cooked_food} drink={self.drinks} flora={len(self.floras)} wealth={self.world.wealth} raid={self.world.raid_active}",
-            'Legend: D dwarf, a animal, workshops (lower=construction upper=built), f/r/t/d/h/p/b zones, stockpiles s c q m g u + S, flora , ; " * + t y T Y A x, items R C A W O E F H B * L h b r M P',
+            'Legend: D dwarf, a animal, workshops (lower=construction upper=built), f/r/t/d/h/p/b zones, stockpiles s c q k m g u + S, flora , ; " * + t y T Y A x, items R C A W O E F H B * L h b r M P X U N Q G',
         ]
         lines.extend("".join(row) for row in grid)
         return "\n".join(lines)
@@ -190,9 +196,28 @@ class RenderMixin:
             return "\n".join(lines)
         if name == "stocks":
             counts: Dict[str, int] = {}
+            loose_counts: Dict[str, int] = {}
+            contained_counts: Dict[str, int] = {}
             for i in self.items:
                 counts[i.kind] = counts.get(i.kind, 0) + 1
-            return "\n".join(f"{k}: {v}" for k, v in sorted(counts.items()))
+                if i.container_id is None:
+                    loose_counts[i.kind] = loose_counts.get(i.kind, 0) + 1
+                else:
+                    contained_counts[i.kind] = contained_counts.get(i.kind, 0) + 1
+            lines = []
+            for k in sorted(counts.keys()):
+                lines.append(
+                    f"{k}: total={counts[k]} loose={loose_counts.get(k, 0)} contained={contained_counts.get(k, 0)}"
+                )
+            lines.append("Containers:")
+            for i in sorted(self.items, key=lambda x: x.id):
+                if i.kind not in {"chest", "barrel", "bin", "crate", "bag"}:
+                    continue
+                used = sum(1 for x in self.items if x.container_id == i.id)
+                lines.append(
+                    f"  [{i.id}] {i.kind} stockpile={i.stockpile_id} load={used} mat={i.material}"
+                )
+            return "\n".join(lines)
         if name == "events":
             return "\n".join(f"t{e.tick} [{e.kind}] sev={e.severity} {e.text}" for e in self.events[-20:])
         if name == "factions":
@@ -300,7 +325,7 @@ class RenderMixin:
         for i in self.items:
             x, y, z = self._item_pos(i)
             lines.append(
-                f"[{i.id}] {i.kind} ({x},{y},{z}) mat={i.material} q={i.quality} v={i.value} age={i.age}/{i.perishability} stock={i.stockpile_id} carried={i.carried_by} reserved={i.reserved_by}"
+                f"[{i.id}] {i.kind} ({x},{y},{z}) mat={i.material} q={i.quality} v={i.value} age={i.age}/{i.perishability} stock={i.stockpile_id} container={i.container_id} carried={i.carried_by} reserved={i.reserved_by}"
             )
         return "\n".join(lines)
 
