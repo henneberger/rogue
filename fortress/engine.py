@@ -78,6 +78,7 @@ class Game(
     workshop_dispatch_cursor: int = 0
     debug_reveal_all_geology: bool = False
     interrupt_requested: bool = False
+    game_over: bool = False
     max_flora: int = 80
     zones: List[Zone] = field(default_factory=list)
     stockpiles: List[Stockpile] = field(default_factory=list)
@@ -282,6 +283,11 @@ class Game(
 
     def tick(self, n: int = 1) -> None:
         for _ in range(n):
+            if self.game_over:
+                break
+            if self._living_dwarf_count() == 0:
+                self._trigger_game_over()
+                break
             if self.interrupt_requested:
                 self.interrupt_requested = False
                 break
@@ -308,8 +314,39 @@ class Game(
             self._sync_carried_items()
             self._refresh_rooms_and_assignments()
             self.world.wealth = sum(i.value + i.quality for i in self.items)
+            if self._living_dwarf_count() == 0:
+                self._trigger_game_over()
+                break
             if self.interrupt_requested:
                 self.interrupt_requested = False
                 break
+
+    def _living_dwarf_count(self) -> int:
+        return sum(1 for d in self.dwarves if d.hp > 0)
+
+    def _trigger_game_over(self) -> None:
+        if self.game_over:
+            return
+        self.game_over = True
+        self._log("game_over", "No dwarves remain. The fortress has fallen.", 3)
+
+    def game_over_summary(self) -> str:
+        deaths = sum(1 for d in self.dwarves if d.hp <= 0)
+        total_dwarves = len(self.dwarves)
+        lines = [
+            "GAME OVER: No dwarves remain.",
+            "Event Summary:",
+            f"- tick={self.tick_count} day={self.world.day} season={self.world.season}",
+            f"- dwarves_alive={self._living_dwarf_count()}/{total_dwarves}",
+            f"- deaths={deaths} total_events={len(self.events)}",
+            "Recent events:",
+        ]
+        recent = self.events[-5:]
+        if recent:
+            for e in recent:
+                lines.append(f"- t{e.tick} [{e.kind}] {e.text}")
+        else:
+            lines.append("- none")
+        return "\n".join(lines)
 
 __all__ = ["Game", "help_text"]

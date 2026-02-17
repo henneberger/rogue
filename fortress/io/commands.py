@@ -37,7 +37,10 @@ class CommandMixin:
         if cmd == "tick":
             n = int(parts[1]) if len(parts) > 1 else 1
             self.tick(n)
-            return self.render()
+            out = self.render()
+            if self.game_over:
+                out += "\n\n" + self.game_over_summary()
+            return out
         if cmd == "z" and len(parts) == 2:
             self.selected_z = clamp(int(parts[1]), 0, self.depth - 1)
             return self.render()

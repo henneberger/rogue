@@ -34,6 +34,7 @@ class PersistenceMixin:
                 "tick": self.tick_count,
                 "selected_z": self.selected_z,
                 "debug_reveal_all_geology": self.debug_reveal_all_geology,
+                "game_over": self.game_over,
             },
             "world": asdict(self.world),
             "zones": [asdict(z) for z in self.zones],
@@ -95,6 +96,7 @@ class PersistenceMixin:
         g.tick_count = data["meta"]["tick"]
         g.selected_z = data["meta"].get("selected_z", 0)
         g.debug_reveal_all_geology = data["meta"].get("debug_reveal_all_geology", False)
+        g.game_over = data["meta"].get("game_over", False)
         g.world = WorldState(**data["world"])
         g.zones = [Zone(**z) for z in data["zones"]]
         g.stockpiles = [Stockpile(**s) for s in data["stockpiles"]]
