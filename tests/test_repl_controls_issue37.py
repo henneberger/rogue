@@ -1,7 +1,6 @@
 import unittest
 
 from fortress.engine import Game
-from fortress.io.repl_completion import complete
 
 
 class ReplControlsIssue37Tests(unittest.TestCase):
@@ -25,32 +24,21 @@ class ReplControlsIssue37Tests(unittest.TestCase):
         g.handle_command("<")
         self.assertEqual(g.selected_z, 0)  # bounded
 
-    def test_completion_suggests_panel_names(self) -> None:
+    def test_tick_interrupt_flag_stops_after_current_iteration(self) -> None:
         g = Game(rng_seed=113)
-        cands = complete(g, "panel ", "")
-        self.assertIn("geology", cands)
-        self.assertIn("jobs", cands)
-        self.assertIn("stocks", cands)
+        steps = {"count": 0}
+        orig_update = g._update_world_time_weather
 
-    def test_completion_order_recipe_is_argument_aware(self) -> None:
-        g = Game(rng_seed=114)
-        ws = g.queue_build_workshop("carpenter", 4, 4, 0)
-        ws.built = True
-        cands_ids = complete(g, "order ", "")
-        self.assertIn(str(ws.id), cands_ids)
-        cands_recipe = complete(g, f"order {ws.id} ", "")
-        self.assertIn("bed", cands_recipe)
-        self.assertIn("barrel", cands_recipe)
-        self.assertNotIn("meal", cands_recipe)
+        def interrupt_after_one_step() -> None:
+            orig_update()
+            steps["count"] += 1
+            if steps["count"] == 1:
+                g.interrupt_requested = True
 
-    def test_completion_build_workshop_and_stockpile(self) -> None:
-        g = Game(rng_seed=115)
-        ws_kinds = complete(g, "build workshop ", "")
-        self.assertIn("kitchen", ws_kinds)
-        self.assertIn("doctor", ws_kinds)
-        pile_kinds = complete(g, "stockpile ", "")
-        self.assertIn("food", pile_kinds)
-        self.assertIn("materials", pile_kinds)
+        g._update_world_time_weather = interrupt_after_one_step
+        g.tick(1000)
+        self.assertEqual(g.tick_count, 1)
+        self.assertFalse(g.interrupt_requested)
 
 
 if __name__ == "__main__":

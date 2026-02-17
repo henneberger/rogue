@@ -77,6 +77,7 @@ class Game(
     next_mandate_id: int = 1
     workshop_dispatch_cursor: int = 0
     debug_reveal_all_geology: bool = False
+    interrupt_requested: bool = False
     max_flora: int = 80
     zones: List[Zone] = field(default_factory=list)
     stockpiles: List[Stockpile] = field(default_factory=list)
@@ -281,6 +282,9 @@ class Game(
 
     def tick(self, n: int = 1) -> None:
         for _ in range(n):
+            if self.interrupt_requested:
+                self.interrupt_requested = False
+                break
             self.tick_count += 1
             self._update_world_time_weather()
             self._grow_farms_and_ecosystems()
@@ -304,5 +308,8 @@ class Game(
             self._sync_carried_items()
             self._refresh_rooms_and_assignments()
             self.world.wealth = sum(i.value + i.quality for i in self.items)
+            if self.interrupt_requested:
+                self.interrupt_requested = False
+                break
 
 __all__ = ["Game", "help_text"]

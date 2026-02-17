@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import signal
 import sys
 try:
     import termios
@@ -10,7 +11,6 @@ except ImportError:  # pragma: no cover
     tty = None
 
 from fortress.engine import Game
-from fortress.io.repl_completion import complete
 
 
 def _redraw(prompt: str, buf: list[str], cursor: int) -> None:
@@ -20,21 +20,6 @@ def _redraw(prompt: str, buf: list[str], cursor: int) -> None:
     if back > 0:
         sys.stdout.write(f"\x1b[{back}D")
     sys.stdout.flush()
-
-
-def _common_prefix(values: list[str]) -> str:
-    if not values:
-        return ""
-    prefix = values[0]
-    for v in values[1:]:
-        i = 0
-        lim = min(len(prefix), len(v))
-        while i < lim and prefix[i] == v[i]:
-            i += 1
-        prefix = prefix[:i]
-        if not prefix:
-            break
-    return prefix
 
 
 def _read_command(g: Game, prompt: str) -> str | None:
@@ -75,31 +60,6 @@ def _read_command(g: Game, prompt: str) -> str | None:
                 if cursor > 0:
                     del buf[cursor - 1]
                     cursor -= 1
-                    _redraw(prompt, buf, cursor)
-                continue
-
-            if ch == "\t":  # tab completion
-                line = "".join(buf)
-                start = line.rfind(" ", 0, cursor) + 1
-                text = line[start:cursor]
-                cands = complete(g, line, text)
-                if not cands:
-                    continue
-                if len(cands) == 1:
-                    repl = cands[0]
-                    buf[start:cursor] = list(repl)
-                    cursor = start + len(repl)
-                    if cursor == len(buf) and not repl.endswith("/"):
-                        buf.insert(cursor, " ")
-                        cursor += 1
-                    _redraw(prompt, buf, cursor)
-                else:
-                    pref = _common_prefix(cands)
-                    if pref and pref != text:
-                        buf[start:cursor] = list(pref)
-                        cursor = start + len(pref)
-                        _redraw(prompt, buf, cursor)
-                    sys.stdout.write("\n" + "  ".join(cands[:24]) + ("\n... more" if len(cands) > 24 else "") + "\n")
                     _redraw(prompt, buf, cursor)
                 continue
 
@@ -154,30 +114,84 @@ def _read_command(g: Game, prompt: str) -> str | None:
 
 def repl() -> None:
     g = Game()
+    sigint_state = {
+        "pending_exit": False,
+        "running": False,
+        "show_idle_hint": False,
+        "show_interrupt_hint": False,
+        "exit_requested": False,
+    }
+
+    previous_sigint = signal.getsignal(signal.SIGINT)
+
+    def _handle_sigint(_signum: int, _frame) -> None:
+        if sigint_state["pending_exit"]:
+            sigint_state["exit_requested"] = True
+            if sigint_state["running"]:
+                g.interrupt_requested = True
+            return
+        sigint_state["pending_exit"] = True
+        if sigint_state["running"]:
+            g.interrupt_requested = True
+            sigint_state["show_interrupt_hint"] = True
+        else:
+            sigint_state["show_idle_hint"] = True
+
+    signal.signal(signal.SIGINT, _handle_sigint)
+
     print("DF-like Console Colony Prototype")
     print("Type 'help' for commands.")
     print(g.render())
 
-    while True:
-        try:
-            raw = _read_command(g, "\n> ")
-        except (EOFError, KeyboardInterrupt):
-            print("\nbye")
-            return
+    try:
+        while True:
+            if sigint_state["exit_requested"]:
+                print("\nbye")
+                return
+            if sigint_state["show_interrupt_hint"]:
+                print("\ninterrupt requested (press Ctrl-C again to exit)")
+                sigint_state["show_interrupt_hint"] = False
+            if sigint_state["show_idle_hint"]:
+                print("\npress Ctrl-C again to exit")
+                sigint_state["show_idle_hint"] = False
 
-        if raw is None:
-            print("bye")
-            return
-        raw = raw.strip()
-        if not raw:
-            continue
+            try:
+                raw = _read_command(g, "\n> ")
+            except (EOFError, KeyboardInterrupt):
+                if sigint_state["pending_exit"]:
+                    print("\nbye")
+                    return
+                sigint_state["pending_exit"] = True
+                print("\npress Ctrl-C again to exit")
+                continue
 
-        try:
-            out = g.handle_command(raw)
-            if out:
-                print(out)
-        except SystemExit:
-            print("bye")
-            return
-        except Exception as e:
-            print(f"error: {e}")
+            if raw is None:
+                print("bye")
+                return
+            raw = raw.strip()
+            if not raw:
+                continue
+
+            sigint_state["pending_exit"] = False
+            sigint_state["running"] = True
+            try:
+                out = g.handle_command(raw)
+                if out:
+                    print(out)
+            except SystemExit:
+                print("bye")
+                return
+            except KeyboardInterrupt:
+                # Fallback if platform/runtime still raises KeyboardInterrupt while running.
+                if sigint_state["pending_exit"]:
+                    print("\nbye")
+                    return
+                sigint_state["pending_exit"] = True
+                g.interrupt_requested = True
+                print("\ninterrupt requested (press Ctrl-C again to exit)")
+            except Exception as e:
+                print(f"error: {e}")
+            finally:
+                sigint_state["running"] = False
+    finally:
+        signal.signal(signal.SIGINT, previous_sigint)
