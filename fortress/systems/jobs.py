@@ -3,26 +3,36 @@ from __future__ import annotations
 from typing import Any, List, Optional
 
 from fortress.models import Dwarf, Job, clamp
+from fortress.systems.jobs_execution import JobExecutionMixin
 
 
-class JobSystemsMixin:
+class JobSystemsMixin(JobExecutionMixin):
     def _assign_job(self, dwarf: Dwarf) -> Job:
         # Critical needs first.
-        if dwarf.needs["hunger"] >= 70:
+        if dwarf.needs["hunger"] >= 75:
             meal = self._find_item(kind="cooked_food")
-            if not meal and dwarf.needs["hunger"] >= 90:
+            if not meal and dwarf.needs["hunger"] >= 95:
                 meal = self._find_item(kind="raw_food")
             if meal:
                 meal.reserved_by = dwarf.id
                 return self._new_job(kind="eat", labor="cook", item_id=meal.id, destination=self._item_pos(meal), phase="to_item")
+            if dwarf.needs["hunger"] >= 90 and self._labor_allowed(dwarf, "harvest"):
+                return self._new_job(
+                    kind="forage",
+                    labor="harvest",
+                    destination=(self.rng.randint(0, self.width - 1), self.rng.randint(0, self.height - 1), dwarf.z),
+                    remaining=3,
+                )
 
-        if dwarf.needs["alcohol"] >= 60 or dwarf.needs["thirst"] >= 70:
+        if dwarf.needs["alcohol"] >= 70 or dwarf.needs["thirst"] >= 78:
             drink = self._find_item(kind="alcohol")
             if drink:
                 drink.reserved_by = dwarf.id
                 return self._new_job(kind="drink", labor="brew", item_id=drink.id, destination=self._item_pos(drink), phase="to_item")
+            if dwarf.needs["thirst"] >= 70:
+                return self._new_job(kind="drink_water", labor="haul", destination=dwarf.pos, remaining=2)
 
-        if dwarf.needs["sleep"] >= 75 and self._find_zone("dormitory"):
+        if dwarf.needs["sleep"] >= 82 and self._find_zone("dormitory"):
             bed = self._assigned_bed_for_dwarf(dwarf.id)
             if bed and bed.reserved_by is None:
                 bed.reserved_by = dwarf.id
@@ -34,6 +44,33 @@ class JobSystemsMixin:
             dorm = self._find_zone("dormitory")
             if dorm:
                 return self._new_job(kind="sleep", labor="sleep", destination=dorm.random_tile(self.rng), phase="sleeping", remaining=5)
+
+        # Stress relief before non-critical work to keep day-to-day cadence human.
+        if dwarf.stress >= 70:
+            if dwarf.needs["entertainment"] >= 45 and self._find_zone("recreation", dwarf.z):
+                rec = self._find_zone("recreation", dwarf.z)
+                return self._new_job(kind="recreate", labor="recreate", destination=rec.random_tile(self.rng), remaining=3)
+            if dwarf.needs["social"] >= 45:
+                peer = next((p for p in self.dwarves if p.id != dwarf.id and p.z == dwarf.z and p.hp > 0), None)
+                if peer:
+                    return self._new_job(kind="socialize", labor="social", target_id=peer.id, destination=peer.pos, remaining=2)
+            if dwarf.needs["worship"] >= 55 and self._find_zone("temple", dwarf.z):
+                temple = self._find_zone("temple", dwarf.z)
+                return self._new_job(kind="worship", labor="worship", destination=temple.random_tile(self.rng), remaining=3)
+
+        # Keep baseline survival loops running even when players do long unattended runs.
+        if self.raw_food + self.cooked_food <= 2:
+            if self._labor_allowed(dwarf, "harvest"):
+                farm = self._find_farm_with_crops(z=dwarf.z)
+                if farm:
+                    farm.crop_available -= 1
+                    return self._new_job(
+                        kind="harvest",
+                        labor="harvest",
+                        target_id=farm.id,
+                        destination=farm.random_tile(self.rng),
+                        remaining=3,
+                    )
 
         # Hospital / medical.
         if dwarf.hp < 60 and self._find_zone("hospital") and self._labor_allowed(dwarf, "medical"):
@@ -99,14 +136,14 @@ class JobSystemsMixin:
                 return self._new_job(kind="haul", labor="haul", item_id=item.id, target_id=stock.id, destination=self._item_pos(item), phase="to_item")
 
         # Recreation, social, worship.
-        if dwarf.needs["entertainment"] >= 50 and self._find_zone("recreation", dwarf.z):
+        if dwarf.needs["entertainment"] >= 60 and self._find_zone("recreation", dwarf.z):
             rec = self._find_zone("recreation", dwarf.z)
             return self._new_job(kind="recreate", labor="recreate", destination=rec.random_tile(self.rng), remaining=3)
-        if dwarf.needs["social"] >= 50:
+        if dwarf.needs["social"] >= 60:
             peer = next((p for p in self.dwarves if p.id != dwarf.id and p.z == dwarf.z and p.hp > 0), None)
             if peer:
                 return self._new_job(kind="socialize", labor="social", target_id=peer.id, destination=peer.pos, remaining=2)
-        if dwarf.needs["worship"] >= 50 and self._find_zone("temple", dwarf.z):
+        if dwarf.needs["worship"] >= 60 and self._find_zone("temple", dwarf.z):
             temple = self._find_zone("temple", dwarf.z)
             return self._new_job(kind="worship", labor="worship", destination=temple.random_tile(self.rng), remaining=3)
 
@@ -127,6 +164,19 @@ class JobSystemsMixin:
             dwarf.job = None
             dwarf.state = "idle"
             return
+
+        # Emergency preemption: survival needs can interrupt non-essential workshop throughput.
+        if job.kind == "workshop_task":
+            if (self.raw_food + self.cooked_food) <= 2 and dwarf.needs["hunger"] >= 80:
+                self._release_job_item(dwarf, job)
+                dwarf.job = None
+                dwarf.state = "idle"
+                return
+            if self.drinks == 0 and dwarf.needs["thirst"] >= 75:
+                self._release_job_item(dwarf, job)
+                dwarf.job = None
+                dwarf.state = "idle"
+                return
 
         if job.kind == "haul":
             self._perform_haul_step(dwarf, job)
@@ -157,9 +207,15 @@ class JobSystemsMixin:
             self._log("mining", f"A stairway was dug at ({dwarf.x},{dwarf.y}) to z={dwarf.z}", 1)
         elif job.kind == "harvest":
             self._spawn_item("raw_food", dwarf.x, dwarf.y, dwarf.z, material="plump-helmet", perishability=130, value=2)
+            self._spawn_item("raw_food", dwarf.x, dwarf.y, dwarf.z, material="plump-helmet", perishability=130, value=2)
             self._spawn_item("seed", dwarf.x, dwarf.y, dwarf.z, material="plump-helmet-spawn", value=1)
             if self.rng.random() < 0.25:
                 self._spawn_item("fiber", dwarf.x, dwarf.y, dwarf.z, material="pig-tail", value=2)
+            self._gain_skill(dwarf, "harvest", 1)
+        elif job.kind == "forage":
+            self._spawn_item("raw_food", dwarf.x, dwarf.y, dwarf.z, material="wild-herb", perishability=105, value=1)
+            if self.rng.random() < 0.25:
+                self._spawn_item("raw_food", dwarf.x, dwarf.y, dwarf.z, material="wild-berry", perishability=95, value=1)
             self._gain_skill(dwarf, "harvest", 1)
         elif job.kind == "recover":
             dwarf.hp = clamp(dwarf.hp + 10, 0, 100)
@@ -188,182 +244,15 @@ class JobSystemsMixin:
             dwarf.needs["worship"] = clamp(dwarf.needs["worship"] - 30, 0, 100)
             dwarf.morale = clamp(dwarf.morale + 3, 0, 100)
             self.world.culture_points += 1
+        elif job.kind == "drink_water":
+            dwarf.needs["thirst"] = clamp(dwarf.needs["thirst"] - 60, 0, 100)
+            dwarf.morale = clamp(dwarf.morale + 2, 0, 100)
+            dwarf.stress = clamp(dwarf.stress - 2, 0, 100)
         elif job.kind == "wander":
             dwarf.morale = clamp(dwarf.morale + 1, 0, 100)
 
         dwarf.job = None
         dwarf.state = "idle"
-
-    def _perform_haul_step(self, dwarf: Dwarf, job: Job) -> None:
-        item = self._find_item_by_id(job.item_id)
-        stock = self._find_stockpile(job.target_id)
-        dwarf.state = "haul"
-        if not item or not stock:
-            self._release_job_item(dwarf, job)
-            dwarf.job = None
-            dwarf.state = "idle"
-            return
-
-        if job.phase == "to_item":
-            job.destination = self._item_pos(item)
-            self._step_move_toward(dwarf, job.destination)
-            if dwarf.pos == self._item_pos(item):
-                item.carried_by = dwarf.id
-                item.stockpile_id = None
-                job.phase = "to_stockpile"
-                job.destination = self._choose_stockpile_drop_tile(stock)
-            return
-
-        if job.phase == "to_stockpile":
-            if self._stockpile_free_slots(stock) <= 0:
-                item.carried_by = None
-                item.reserved_by = None
-                item.x, item.y, item.z = dwarf.x, dwarf.y, dwarf.z
-                dwarf.job = None
-                dwarf.state = "idle"
-                return
-            self._step_move_toward(dwarf, job.destination)
-            if dwarf.pos == job.destination:
-                item.carried_by = None
-                item.reserved_by = None
-                item.x, item.y, item.z = dwarf.x, dwarf.y, dwarf.z
-                item.stockpile_id = stock.id
-                self._gain_skill(dwarf, "haul", 1)
-                dwarf.job = None
-                dwarf.state = "idle"
-
-    def _perform_workshop_task_step(self, dwarf: Dwarf, job: Job) -> None:
-        ws = self._find_workshop(job.target_id)
-        if not ws or not ws.built:
-            self._release_job_item(dwarf, job)
-            dwarf.job = None
-            dwarf.state = "idle"
-            return
-
-        recipe = job.recipe or ""
-        spec = self.defs.get("recipes", {}).get(ws.kind, {}).get(recipe)
-        if not spec:
-            dwarf.job = None
-            dwarf.state = "idle"
-            return
-
-        dwarf.state = f"{ws.kind}:{recipe}"
-        primary = self._find_item_by_id(job.item_id)
-
-        if job.phase == "to_input" and primary:
-            job.destination = self._item_pos(primary)
-            self._step_move_toward(dwarf, job.destination)
-            if dwarf.pos == self._item_pos(primary):
-                primary.carried_by = dwarf.id
-                primary.stockpile_id = None
-                job.phase = "to_workshop"
-                job.destination = ws.pos
-            return
-
-        if job.phase == "to_workshop":
-            self._step_move_toward(dwarf, ws.pos)
-            if dwarf.pos == ws.pos:
-                job.phase = "crafting"
-                job.remaining = spec.get("time", 4)
-            return
-
-        if job.phase == "crafting":
-            job.remaining -= 1
-            if dwarf.rested_bonus > 0 and self.rng.random() < 0.20:
-                job.remaining -= 1
-            if job.remaining > 0:
-                return
-            # Consume required inputs.
-            for input_kind, qty in spec.get("inputs", {}).items():
-                for _ in range(qty):
-                    found = next(
-                        (i for i in self.items if i.kind == input_kind and (i.reserved_by in {None, dwarf.id})),
-                        None,
-                    )
-                    if found:
-                        self._consume_item(found.id)
-            # Produce outputs.
-            for output_kind, qty in spec.get("outputs", {}).items():
-                for _ in range(qty):
-                    quality = clamp(dwarf.skills.get(job.labor, 0) // 15, 0, 5)
-                    val = 1 + spec.get("value_bonus", 1) + quality
-                    perish = 150 if output_kind in {"cooked_food", "raw_food", "alcohol"} else 0
-                    self._spawn_item(output_kind, ws.x, ws.y, ws.z, quality=quality, value=val, perishability=perish)
-            self._gain_skill(dwarf, job.labor, 1)
-            dwarf.needs["entertainment"] = clamp(dwarf.needs["entertainment"] - 4, 0, 100)
-            dwarf.job = None
-            dwarf.state = "idle"
-
-    def _perform_need_job_step(self, dwarf: Dwarf, job: Job) -> None:
-        dwarf.state = job.kind
-        item = self._find_item_by_id(job.item_id)
-
-        if job.kind in {"eat", "drink"}:
-            if not item:
-                dwarf.job = None
-                dwarf.state = "idle"
-                return
-            if job.phase == "to_item":
-                job.destination = self._item_pos(item)
-                self._step_move_toward(dwarf, job.destination)
-                if dwarf.pos == self._item_pos(item):
-                    item.carried_by = dwarf.id
-                    item.stockpile_id = None
-                    job.phase = "using"
-                    job.remaining = 2
-                return
-            if job.phase == "using":
-                job.remaining -= 1
-                if job.remaining > 0:
-                    return
-                self._apply_nutrition_from_item(dwarf, item)
-                self._consume_item(item.id)
-                if job.kind == "eat":
-                    dwarf.needs["hunger"] = clamp(dwarf.needs["hunger"] - 65, 0, 100)
-                    dwarf.morale = clamp(dwarf.morale + 4, 0, 100)
-                else:
-                    dwarf.needs["thirst"] = clamp(dwarf.needs["thirst"] - 70, 0, 100)
-                    dwarf.morale = clamp(dwarf.morale + 3, 0, 100)
-                    dwarf.needs["alcohol"] = clamp(
-                        dwarf.needs["alcohol"] - (45 + max(0, dwarf.alcohol_dependency // 3)),
-                        0,
-                        100,
-                    )
-                    dwarf.withdrawal_ticks = 0
-                dwarf.stress = clamp(dwarf.stress - 5, 0, 100)
-                dwarf.job = None
-                dwarf.state = "idle"
-                return
-
-        if job.kind == "sleep":
-            if job.phase == "to_bed" and item:
-                job.destination = self._item_pos(item)
-                self._step_move_toward(dwarf, job.destination)
-                if dwarf.pos == self._item_pos(item):
-                    job.phase = "sleeping"
-                    job.remaining = 5
-                return
-            if job.phase == "sleeping":
-                job.remaining -= 1
-                if job.remaining > 0:
-                    return
-                room_value = self._dwarf_room_value(dwarf.id)
-                morale_gain = min(12, 5 + room_value // 25)
-                stress_recovery = min(18, 8 + room_value // 20)
-                dwarf.needs["sleep"] = clamp(dwarf.needs["sleep"] - 70, 0, 100)
-                dwarf.stress = clamp(dwarf.stress - stress_recovery, 0, 100)
-                dwarf.morale = clamp(dwarf.morale + morale_gain, 0, 100)
-                dwarf.rested_bonus = max(dwarf.rested_bonus, min(80, room_value))
-                dwarf.job = None
-                dwarf.state = "idle"
-
-    def _release_job_item(self, dwarf: Dwarf, job: Job) -> None:
-        item = self._find_item_by_id(job.item_id)
-        if item and item.reserved_by == dwarf.id:
-            item.reserved_by = None
-            if item.carried_by == dwarf.id:
-                item.carried_by = None
-                item.x, item.y, item.z = dwarf.pos
 
     def _pop_global_job_for_labor(self, dwarf: Dwarf, labor: str) -> Optional[Job]:
         if not self._labor_allowed(dwarf, labor):

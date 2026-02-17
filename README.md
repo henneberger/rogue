@@ -9,9 +9,14 @@ Coverage status: `/Users/henneberger/game2/docs/ROADMAP_COVERAGE_STATUS.md`
 
 - `/Users/henneberger/game2/game.py`: launcher entrypoint.
 - `/Users/henneberger/game2/fortress/models.py`: entities, dataclasses, constants/helpers.
-- `/Users/henneberger/game2/fortress/engine.py`: `Game` state + tick coordinator + shared helpers.
+- `/Users/henneberger/game2/fortress/engine.py`: `Game` state + tick coordinator.
 - `/Users/henneberger/game2/fortress/cli.py`: interactive REPL loop.
-- `/Users/henneberger/game2/fortress/systems/`: simulation subsystems (`jobs`, `world`, `needs`, `social`, `justice`).
+- `/Users/henneberger/game2/fortress/systems/`: simulation subsystems and extracted engine helpers:
+  - `defs.py`, `flora_catalog.py`: simulation defs/catalog data.
+  - `worldgen.py`: seeded world/region/history generation.
+  - `game_helpers.py`: shared item/finder/movement/logging helpers.
+  - `jobs.py`, `jobs_execution.py`: job selection and execution phases.
+  - `world.py`, `flora.py`, `needs.py`, `social.py`, `justice.py`, `architecture.py`.
 - `/Users/henneberger/game2/fortress/io/`: REPL command dispatch, rendering/panels, save/load/replay.
 
 ## Run
