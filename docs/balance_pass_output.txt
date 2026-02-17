@@ -1,0 +1,75 @@
+=== Balance Pass Scenarios ===
+
+{'scenario': 'sunspot_fortress_support', 'tick': 650, 'alive': '3/3', 'avg_stress': 0, 'avg_morale': 45.3, 'tantrums': 0, 'hp': [91, 97, 98], 'food': {'raw': 73, 'cooked': 0, 'drink': 0}, 'economy': {'timber_harvested': 1, 'forage_total': 6, 'cultural_goods': 25, 'mandates': 5, 'fulfilled': 2, 'failed': 3}}
+
+{'scenario': 'sunspot_frontier_ecology', 'tick': 640, 'alive': '3/3', 'avg_stress': 15.7, 'avg_morale': 12.7, 'tantrums': 0, 'hp': [96, 94, 91], 'food': {'raw': 67, 'cooked': 0, 'drink': 0}, 'economy': {'timber_harvested': 7, 'forage_total': 11, 'cultural_goods': 9, 'mandates': 5, 'fulfilled': 2, 'failed': 2}}
+
+{'scenario': 'collapse_food_chain_disabled', 'tick': 700, 'alive': '0/3', 'avg_stress': 100, 'avg_morale': 0, 'tantrums': 3, 'hp': [0, 0, 0], 'food': {'raw': 0, 'cooked': 0, 'drink': 0}, 'economy': {'timber_harvested': 0, 'forage_total': 0, 'cultural_goods': 6, 'mandates': 5, 'fulfilled': 1, 'failed': 3}}
+
+{'scenario': 'collapse_raid_and_recovery_disabled', 'tick': 700, 'alive': '0/3', 'avg_stress': 100, 'avg_morale': 0, 'tantrums': 3, 'hp': [0, 0, 0], 'food': {'raw': 0, 'cooked': 0, 'drink': 0}, 'economy': {'timber_harvested': 0, 'forage_total': 0, 'cultural_goods': 6, 'mandates': 5, 'fulfilled': 0, 'failed': 4}}
+
+--- sunspot_fortress_support panel world ---
+world=Storm Reach fortress_region=1
+day=33 season=summer weather=storm temp=22C
+biome=arid-steppe wealth=704
+water_pressure=39 magma_pressure=0
+raid_active=False threat=0
+regions=6 history_events=14
+timber_harvested=1 forage_total=6 active_mandates=0
+timber_species=acacia=1
+mandate_trade_impact=wealth+30 rep+11 rep-21
+
+--- sunspot_frontier_ecology panel world ---
+world=Moss Vale fortress_region=2
+day=33 season=summer weather=storm temp=21C
+biome=temperate-forest wealth=590
+water_pressure=100 magma_pressure=0
+raid_active=False threat=0
+regions=6 history_events=14
+timber_harvested=7 forage_total=11 active_mandates=1
+timber_species=birch=4, oak=3
+mandate_trade_impact=wealth+41 rep+14 rep-9
+
+--- collapse_food_chain_disabled panel events tail ---
+t570 [death] sev=3 Domas has died.
+t570 [health] sev=2 Mistem is physically weakening from deprivation.
+t570 [death] sev=3 Mistem has died.
+t570 [animal] sev=2 A goat died of neglect.
+t598 [animal] sev=2 A goat died of neglect.
+t600 [season] sev=1 Season changed to summer
+t600 [mandate] sev=1 New timber mandate from Mountainhome: timber x5 by t763.
+t602 [weather] sev=1 Weather is now fog
+t606 [culture] sev=1 A manuscript was completed in the archives.
+t614 [weather] sev=1 Weather is now clear
+t621 [weather] sev=1 Weather is now rain
+t626 [animal] sev=2 A goat died of neglect.
+t628 [weather] sev=1 Weather is now fog
+t654 [animal] sev=2 A goat died of neglect.
+t664 [weather] sev=1 Weather is now dry
+t682 [animal] sev=2 A goat died of neglect.
+t684 [mandate] sev=2 Mandate #4 expired (artifact x2).
+t685 [weather] sev=1 Weather is now fog
+t696 [weather] sev=1 Weather is now dry
+t700 [culture] sev=1 A manuscript was completed in the archives.
+
+--- collapse_raid_and_recovery_disabled panel events tail ---
+t594 [weather] sev=1 Weather is now dry
+t596 [raid] sev=1 Raiders dispersed before a full assault.
+t598 [animal] sev=2 A goat died of neglect.
+t600 [season] sev=1 Season changed to summer
+t600 [weather] sev=1 Weather is now rain
+t600 [mandate] sev=1 New timber mandate from River Guild: timber x3 by t754.
+t615 [weather] sev=1 Weather is now storm
+t618 [weather] sev=1 Weather is now storm
+t619 [mandate] sev=2 Mandate #4 expired (performance_record x2).
+t626 [animal] sev=2 A goat died of neglect.
+t629 [weather] sev=1 Weather is now rain
+t630 [weather] sev=1 Weather is now rain
+t633 [weather] sev=1 Weather is now dry
+t648 [culture] sev=1 A manuscript was completed in the archives.
+t650 [weather] sev=1 Weather is now dry
+t654 [animal] sev=2 A goat died of neglect.
+t661 [weather] sev=1 Weather is now fog
+t669 [weather] sev=1 Weather is now storm
+t682 [animal] sev=2 A goat died of neglect.
+t688 [weather] sev=1 Weather is now storm
