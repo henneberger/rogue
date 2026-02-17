@@ -24,6 +24,12 @@ class ReplControlsIssue37Tests(unittest.TestCase):
         g.handle_command("<")
         self.assertEqual(g.selected_z, 0)  # bounded
 
+    def test_z_command_rerenders_new_level(self) -> None:
+        g = Game(rng_seed=116, depth=3)
+        out = g.handle_command("z 2")
+        self.assertEqual(g.selected_z, 2)
+        self.assertIn(" | z=2 | ", out)
+
     def test_tick_interrupt_flag_stops_after_current_iteration(self) -> None:
         g = Game(rng_seed=113)
         steps = {"count": 0}

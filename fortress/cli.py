@@ -156,7 +156,8 @@ def repl() -> None:
                 sigint_state["show_idle_hint"] = False
 
             try:
-                raw = _read_command(g, "\n> ")
+                print()
+                raw = _read_command(g, "> ")
             except (EOFError, KeyboardInterrupt):
                 if sigint_state["pending_exit"]:
                     print("\nbye")
