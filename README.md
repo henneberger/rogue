@@ -84,6 +84,7 @@ panel events
 
 - `help`
 - `render [z]`
+- `render geology [z]`
 - `status`
 - `tick [n]`
 - `z <level>`
@@ -104,6 +105,7 @@ panel events
 - `faction stance <faction_id> <allied|neutral|hostile>`
 - `alert <peace|raid>`
 - `panel <world|worldgen|flora|geology|rooms|dwarves|jobs|stocks|events|factions|squads|justice|culture>`
+- `reveal geology [off]`
 - `flora at <x> <y> <z>`
 - `prospect <x> <y> <z>`
 - `items`

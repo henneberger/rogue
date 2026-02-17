@@ -29,7 +29,12 @@ from fortress.models import (
 class PersistenceMixin:
     def save_json(self, path: str) -> None:
         payload = {
-            "meta": {"rng_seed": self.rng_seed, "tick": self.tick_count, "selected_z": self.selected_z},
+            "meta": {
+                "rng_seed": self.rng_seed,
+                "tick": self.tick_count,
+                "selected_z": self.selected_z,
+                "debug_reveal_all_geology": self.debug_reveal_all_geology,
+            },
             "world": asdict(self.world),
             "zones": [asdict(z) for z in self.zones],
             "stockpiles": [asdict(s) for s in self.stockpiles],
@@ -89,6 +94,7 @@ class PersistenceMixin:
         g = cls(rng_seed=data["meta"]["rng_seed"])
         g.tick_count = data["meta"]["tick"]
         g.selected_z = data["meta"].get("selected_z", 0)
+        g.debug_reveal_all_geology = data["meta"].get("debug_reveal_all_geology", False)
         g.world = WorldState(**data["world"])
         g.zones = [Zone(**z) for z in data["zones"]]
         g.stockpiles = [Stockpile(**s) for s in data["stockpiles"]]

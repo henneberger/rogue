@@ -4,6 +4,43 @@ from typing import Dict, Optional
 
 
 class RenderMixin:
+    def render_geology(self, z: Optional[int] = None) -> str:
+        z = self.selected_z if z is None else z
+        grid = [["#" for _ in range(self.width)] for _ in range(self.height)]
+        reveal = self.debug_reveal_all_geology
+
+        for x, y, cz in self.geology_cavern_tiles:
+            if cz != z or not self._in_bounds(x, y, z):
+                continue
+            if reveal or (x, y, z) in self.geology_breached_tiles:
+                grid[y][x] = "!" if (x, y, z) in self.geology_breached_tiles else "~"
+
+        for dep in self.geology_deposits:
+            if dep.z != z or not self._in_bounds(dep.x, dep.y, z):
+                continue
+            visible = reveal or dep.discovered
+            if dep.remaining_yield <= 0:
+                ch = "x" if visible else "#"
+            elif not visible:
+                ch = "#"
+            elif dep.kind == "ore":
+                ch = "E"
+            else:
+                ch = "J"
+            grid[dep.y][dep.x] = ch
+
+        for d in self.dwarves:
+            if d.z == z and d.hp > 0 and self._in_bounds(d.x, d.y, z):
+                grid[d.y][d.x] = "D"
+
+        stratum = self.geology_strata.get(z, "unknown")
+        lines = [
+            f"Geology Overlay | z={z} stratum={stratum} reveal_all={self.debug_reveal_all_geology}",
+            "Legend: # hidden rock, E discovered ore, J discovered gem, ~ cavern, ! breached cavern, x depleted, D dwarf",
+        ]
+        lines.extend("".join(row) for row in grid)
+        return "\n".join(lines)
+
     def render(self, z: Optional[int] = None) -> str:
         z = self.selected_z if z is None else z
         grid = [["." for _ in range(self.width)] for _ in range(self.height)]

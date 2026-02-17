@@ -76,6 +76,7 @@ class Game(
     next_flora_id: int = 1
     next_mandate_id: int = 1
     workshop_dispatch_cursor: int = 0
+    debug_reveal_all_geology: bool = False
     max_flora: int = 80
     zones: List[Zone] = field(default_factory=list)
     stockpiles: List[Stockpile] = field(default_factory=list)
