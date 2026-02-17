@@ -151,8 +151,15 @@ class WorldSystemsMixin:
         pasture = self._find_zone("pasture")
         for a in self.animals:
             a.hunger = clamp(a.hunger + 2, 0, 100)
-            if pasture and a.z == pasture.z:
-                a.hunger = clamp(a.hunger - 3, 0, 100)
+            in_pasture = pasture is not None and pasture.contains(a.pos)
+            if in_pasture:
+                a.hunger = clamp(a.hunger - 4, 0, 100)
+            elif a.z == 0:
+                # Surface grazing prevents starvation for free-ranging animals.
+                graze = 2
+                if self.rng.random() < 0.35:
+                    graze += 1
+                a.hunger = clamp(a.hunger - graze, 0, 100)
             if self.rng.random() < 0.3:
                 nx = clamp(a.x + self.rng.choice([-1, 0, 1]), 0, self.width - 1)
                 ny = clamp(a.y + self.rng.choice([-1, 0, 1]), 0, self.height - 1)
