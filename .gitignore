@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Test and coverage artifacts
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Local run artifacts
+save_*.json
+*_save.json
+replay_*.txt
+smoke_*.json
+
+# macOS
+.DS_Store
